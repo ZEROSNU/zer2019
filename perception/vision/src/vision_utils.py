@@ -6,6 +6,9 @@ import math
 lower_yellow = np.array([15,40,150],np.uint8)
 upper_yellow = np.array([40,255,255],np.uint8)
 
+lower_green = np.array([80-15,50,50],np.uint8)
+upper_green = np.array([80+15,255,255],np.uint8)
+#margin = np.ones(4) * 15
 
 def findColor(hsv_image, lower, upper):
     mask = cv2.inRange(hsv_image, lower, upper)

@@ -7,14 +7,15 @@ from cv_bridge import CvBridge, CvBridgeError
 import time
 import os
 
-H_front = np.array([[-2.21600611e-01, -4.02884371e-01,  1.05711505e+03],
- [ 1.31734847e+00,  2.48484602e+00, -3.46819684e+01],
- [-2.82815151e-04,  7.94547169e-03,  1.00000000e+00]])
+H_front = np.array([[ 3.10164638e-02, -2.71691454e-01,  5.90104491e+02],
+ [ 8.87632169e-01,  2.18687196e+00,  1.20801218e+01],
+ [ 1.04434533e-05,  7.26795454e-03,  1.00000000e+00]]
+)
 
-H_left = np.array([[ 1.43015382e-01, -2.11501611e-01,  8.13747195e+02],
- [ 1.23578247e+00,  2.37317155e+00, -2.27820899e+02],
- [-8.49898466e-05,  7.68283611e-03,  1.00000000e+00]])
-
+H_left = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
+ [ 8.77530407e-01,  2.06530134e+00, -3.14076391e+02],
+ [ 3.09604396e-04,  6.04023151e-03,  1.00000000e+00]]
+)
 def warp_image(image, homography):
     im_out = cv2.warpPerspective(image, homography, (600, 600))
     return im_out
@@ -66,8 +67,8 @@ if __name__ == '__main__':
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(0)
-            cam_left = cv2.VideoCapture(1)
+            cam_front = cv2.VideoCapture(1)
+            cam_left = cv2.VideoCapture(2)
             
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
