@@ -19,10 +19,16 @@ catkin_package(CATKIN_DEPENDS
 )
 set (SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/carsetupcomhandle.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/DORRT.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/magneticmodel.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/potentialmodel.cpp
 )
 
 set (HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/include/carsetupcomhandle.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/DORRT.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/magneticmodel.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/potentialmodel.h
 )
 
 

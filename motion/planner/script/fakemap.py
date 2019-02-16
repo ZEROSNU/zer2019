@@ -17,7 +17,7 @@ class fakemap :
         self.seq = -1
         self.initseq = -1
         self.goalseq = -1
-        qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, 0)
+        qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, -1.57)
         self.simpletf = TFMessage()
         self.simpletf.transforms.append(TransformStamped())
         self.simpletf.transforms[0].header.frame_id = "map"
@@ -26,7 +26,7 @@ class fakemap :
         self.simpletf.transforms[0].transform.rotation.y = qframe[1]
         self.simpletf.transforms[0].transform.rotation.z = qframe[2]
         self.simpletf.transforms[0].transform.rotation.w = qframe[3]
-        self.simpletf.transforms[0].transform.translation.x = 0
+        self.simpletf.transforms[0].transform.translation.x = 3
         self.simpletf.transforms[0].transform.translation.y = 3
 
         qmap = tf_conversions.transformations.quaternion_from_euler(0, 0, 0)
@@ -46,6 +46,9 @@ class fakemap :
         for i in range(height) :
             zrs[i][-1] = 1
         zrs[height/2 : -1]=1
+        for i in range(height/4) :
+            for j in range(height/4) :
+                zrs[i+height/8][j+height*3/8] = 1
         print zrs
         return zrs.flatten()
 
