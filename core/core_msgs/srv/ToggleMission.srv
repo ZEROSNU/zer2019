@@ -1,0 +1,4 @@
+#if toggle is true, something happens, if false, nothing should happen
+bool toggle
+---
+bool is_confirmed
