@@ -6,11 +6,9 @@ import time
 import math
 import numpy as np
 
-import matplotlib.pyplot as plt
-
 from sensor_msgs.msg import LaserScan, Image
 
-DEBUG = True
+DEBUG = False
 XY_RES = 0.03  # x-y grid resolution [m]
 YAW_RES = 0.00872664619237  # yaw angle resolution [rad] = 0.05 degree
 MIN_X = -3.0
@@ -30,12 +28,6 @@ def callback(data):
     pmap = generate_ray_casting_grid_map(r)
     img_msg = ros_numpy.msgify(Image, pmap, encoding='mono8')
     lidar_map_pub.publish(img_msg)
-
-    if DEBUG:
-        plt.cla()
-        draw_heatmap(pmap)
-        plt.plot(0.0, 0.0, "ob")    #(0,0) dot
-        plt.pause(0.05)             #0.05s pause
 
     # show calculation time
     #t2 = time.time()
@@ -102,7 +94,7 @@ def generate_ray_casting_grid_map(r):
     
     ox = [r[i] * math.cos(i * YAW_RES) for i in range(len(r))]
     oy = [r[i] * math.sin(i * YAW_RES) for i in range(len(r))]
-    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8)
+    pmap = np.ones(shape=(LEN_Y, LEN_X), dtype=np.uint8) * 255
 
     for (x, y) in zip(ox, oy):
 
@@ -115,25 +107,8 @@ def generate_ray_casting_grid_map(r):
 
         ix = int(round((x - MIN_X) / XY_RES))
         iy = int(round((y - MIN_Y) / XY_RES))
-        # TODO: fix so that y = 200 does not occur
-        #for grid in grid_list:
-            #if grid.d > d:
-                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 255        # unknown area    
-        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 255  # obstacles #added min operation for handling indexerror
-        #except IndexError:
-         #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
-    pmap = np.rot90(pmap, 3) #added to rotate 90 degrees clockwise
+        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 0  # obstacles #added min operation for handling indexerror
     return pmap
-
-
-def draw_heatmap(pmap):
-    x, y = np.mgrid[slice(MIN_X, MAX_X, XY_RES),
-                    slice(MIN_Y, MAX_Y, XY_RES)]
-
-    plt.pcolor(x, y, pmap, vmax=1.0, cmap=plt.cm.Blues)
-    plt.xlim(MIN_X, MAX_X)
-    plt.ylim(MIN_Y, MAX_Y)
-
 
 precast = precasting()
 
