@@ -1,13 +1,16 @@
 #!/usr/bin/env python
+
 import rospy
 import ros_numpy
 import time
 import math
 import numpy as np
+
 import matplotlib.pyplot as plt
+
 from sensor_msgs.msg import LaserScan, Image
 
-DEBUG = False
+DEBUG = True
 XY_RES = 0.03  # x-y grid resolution [m]
 YAW_RES = 0.00872664619237  # yaw angle resolution [rad] = 0.05 degree
 MIN_X = -3.0
@@ -19,7 +22,7 @@ LEN_Y = int(round((MAX_Y - MIN_Y) / XY_RES))
 
 
 def callback(data):
-    t1 = time.time()
+    #t1 = time.time()
 
     r = list(data.ranges)
     r = r[90:-90]         # len(r)=361
@@ -88,21 +91,18 @@ def precasting():            # initiating mapping process. so we run this func o
 
 
 def generate_ray_casting_grid_map(r):
-    '''
 
-    :param r: list, lidar data, size = 361
-    :return: 2D numpy array, containing the obstacles
-    '''
-
+    #:param r: list, lidar data, size = 361
+    #:return: 2D numpy array, containing the obstacles
     for i in range(len(r)):
         if abs(r[i] * math.cos(i * YAW_RES)) > 2.97 \
                 or abs(r[i] * math.sin(i * YAW_RES)) > 6 \
-                or abs(r[i] < 0.03):
+                or abs(r[i]) < 0.03:
             r[i] = 0       # dismiss strange data
     
     ox = [r[i] * math.cos(i * YAW_RES) for i in range(len(r))]
     oy = [r[i] * math.sin(i * YAW_RES) for i in range(len(r))]
-    pmap = np.ones(shape=(LEN_Y, LEN_X), dtype=np.uint8) * 255
+    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8)
 
     for (x, y) in zip(ox, oy):
 
@@ -115,16 +115,14 @@ def generate_ray_casting_grid_map(r):
 
         ix = int(round((x - MIN_X) / XY_RES))
         iy = int(round((y - MIN_Y) / XY_RES))
-
         # TODO: fix so that y = 200 does not occur
-        try:
-            for grid in grid_list:
-                if grid.d > d:
-                    pmap[LEN_Y - grid.iy][grid.ix] = 0        # unknown area
-            pmap[LEN_Y - iy][ix] = 0                           # obstacles
-        except IndexError:
-            rospy.loginfo("Error with (ix, iy) = (%d, %d)" % (ix, iy))
-
+        #for grid in grid_list:
+            #if grid.d > d:
+                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 255        # unknown area    
+        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 255  # obstacles #added min operation for handling indexerror
+        #except IndexError:
+         #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
+    pmap = np.rot90(pmap, 3) #added to rotate 90 degrees clockwise
     return pmap
 
 
@@ -140,6 +138,7 @@ def draw_heatmap(pmap):
 precast = precasting()
 
 if __name__ == "__main__":
+    
     rospy.init_node('lidar_subscriber', anonymous=True)
     rospy.Subscriber("/scan", LaserScan, callback)
     lidar_map_pub = rospy.Publisher('/lidar_map', Image, queue_size=1)
