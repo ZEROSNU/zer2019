@@ -27,10 +27,17 @@ LANE_ROI_OFFSET = 100
 IMAGE_SIZE = 600
 MAP_SIZE = 200
 
+# LANE_WIDTH
+LANE_WIDTH = 280
+
+# NO LANE DETECTED(COUNT UP EVERY FRAME)
+NO_LANE_COUNT = 0
+
 # Debug Mode
-Z_DEBUG = False
+Z_DEBUG = True
 
 def callback(data):
+
     img_input = bridge.imgmsg_to_cv2(data, 'bgr8')
 
     '''
@@ -64,49 +71,67 @@ def callback(data):
     ------------------------------------------------------------------------
     '''
 
-    if(len(coeff_buffer)<3):
-        # Previous coefficient data is not sufficient (less than 3)
-        coeff = np.polyfit(x_vals, y_vals,2)
-        coeff_buffer.append(coeff)
-        coeff_left = coeff
+    global NO_LANE_COUNT
+    if(np.size(x_vals) == 0):
+        #IF NO LANE DETECTED
+        print("NO LANE!")
+        NO_LANE_COUNT = NO_LANE_COUNT + 1
+        if(NO_LANE_COUNT < 5):
+            if(len(coeff_buffer)<3):
+                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE*0.5 + LANE_WIDTH*0.5 )]) 
+            else:
+                coeff_left = coeff_buffer[2]
+        else:
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE*0.5 + LANE_WIDTH*0.5 )])
 
     else:
-        # Previous coefficient data is sufficient (more than 3)
+        #IF LANE DETECTED
+        NO_LANE_COUNT = 0
 
-        # Calculate coefficients using ROI ###START
-        last_coeff = coeff_buffer[2]
-        last_f = np.poly1d(last_coeff)
+        if(len(coeff_buffer)<3):
+            # Previous coefficient data is not sufficient (less than 3)
+            coeff = np.polyfit(x_vals, y_vals,2)
+            coeff_buffer.append(coeff)
+            coeff_left = coeff
 
-        # Target points inner ROI (Comparing with previous lane data)
-        y_vals_roi = y_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
-        x_vals_roi = x_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
+        else:
+            # Previous coefficient data is sufficient (more than 3)
 
-        coeff = np.polyfit(x_vals_roi, y_vals_roi,2)
+            # Calculate coefficients using ROI ###START
+            last_coeff = coeff_buffer[2]
+            last_f = np.poly1d(last_coeff)
 
-        x_vals = x_vals_roi
-        y_vals = y_vals_roi
+            # Target points inner ROI (Comparing with previous lane data)
+            y_vals_roi = y_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
+            x_vals_roi = x_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
+            
 
-        # Using buffers for filtering
-        # 1. Calculate rsquared for last 3 coefficients each
-        # 2. Calculate weights of each coefficients using rsquared & softmax function
-        prev_f1 = np.poly1d(coeff_buffer[1])
-        prev_f2 = np.poly1d(coeff_buffer[2])
-        current_f = np.poly1d(coeff)
+            coeff = np.polyfit(x_vals_roi, y_vals_roi,2)
+            x_vals = x_vals_roi
+            y_vals = y_vals_roi
 
-        rsquared_prev1 = calculate_rsquared(x_vals, y_vals, prev_f1)
-        rsquared_prev2 = calculate_rsquared(x_vals, y_vals, prev_f2)
-        rsquared_current = calculate_rsquared(x_vals, y_vals, current_f)
+            # Using buffers for filtering
+            # 1. Calculate rsquared for last 3 coefficients each
+            # 2. Calculate weights of each coefficients using rsquared & softmax function
+            prev_f1 = np.poly1d(coeff_buffer[1])
+            prev_f2 = np.poly1d(coeff_buffer[2])
+            current_f = np.poly1d(coeff)
 
-        exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
-        weight_prev1 = math.exp(rsquared_prev1) / exp_sum
-        weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-        weight_current = math.exp(rsquared_current) / exp_sum
+            rsquared_prev1 = calculate_rsquared(x_vals, y_vals, prev_f1)
+            rsquared_prev2 = calculate_rsquared(x_vals, y_vals, prev_f2)
+            rsquared_current = calculate_rsquared(x_vals, y_vals, current_f)
 
-        coeff_left = weight_prev1 * coeff_buffer[1] + weight_prev2 * coeff_buffer[2] + weight_current * coeff
+            exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+            weight_prev1 = math.exp(rsquared_prev1) / exp_sum
+            weight_prev2 = math.exp(rsquared_prev2) / exp_sum
+            weight_current = math.exp(rsquared_current) / exp_sum
 
-        # Updating buffer
-        coeff_buffer[0:-1] = coeff_buffer[1:3]
-        coeff_buffer[2] = coeff_left
+            coeff_left = weight_prev1 * coeff_buffer[1] + weight_prev2 * coeff_buffer[2] + weight_current * coeff
+
+            # Updating buffer
+            coeff_buffer[0:-1] = coeff_buffer[1:3]
+            coeff_buffer[2] = coeff_left
+
 
     t = np.arange(0,IMAGE_SIZE,1)
     f = np.poly1d(coeff_left)
@@ -123,28 +148,20 @@ def callback(data):
     ------------------------------------------------------------------------
     '''
 
-    LANE_WIDTH = 280
-
-
-    #just shifting works well(?)
-    '''
-    slopes = 2 * coeff_left[0] * t + coeff_left[1]
-    theta = np.arctan2((slopes), 1.0)
-    polypoints_left[:,0] = t + LANE_WIDTH * np.cos(theta-np.pi/2)
-    polypoints_left[:,1] = f(t) + LANE_WIDTH * np.sin(theta-np.pi/2)
-    '''
-
     polypoints_left_[:,0] = t
     polypoints_left_[:,1] = f(t) - LANE_WIDTH
 
     coeff_right = np.copy(coeff_left)
     coeff_right[2] = coeff_right[2] - LANE_WIDTH
+
     '''
-    ------------------------------------------------------------------------ CREATE NEW MASK FOR PUBLISH
+    ------------------------------------------------------------------------
+    CREATE NEW MASK FOR PUBLISH
     OUSIDE LANE = OCCUPIED, WHITE, 1
     INSIDE LANE = UNOCCUPIED, BLACK, 0
     ------------------------------------------------------------------------
     '''
+
     mask_left = np.arange(0, IMAGE_SIZE, 1)
     mask_right = np.arange(0, IMAGE_SIZE, 1)
 
@@ -163,7 +180,6 @@ def callback(data):
 
     #Draw lines on lane
     cv2.polylines(img, np.int32([polypoints]), False, (255,0,0),2)
-    #cv2.polylines(img, np.int32([polypoints_left]), False, (255,0,0),2)
     cv2.polylines(img, np.int32([polypoints_left_]), False, (0,255,0),2)
 
 
@@ -186,12 +202,11 @@ def callback(data):
         cv2.imshow('image',green_mask)
         cv2.imshow('color_image',img)
         cv2.imshow('send_image',masked_img)
-        cv2.waitKey(50)
+        cv2.waitKey(1)
 
 
 if __name__ == '__main__':
     rospy.loginfo('Initiate draw_lane node')
-
     rospy.init_node('draw_lane', anonymous=True)
 
     bridge = CvBridge()
