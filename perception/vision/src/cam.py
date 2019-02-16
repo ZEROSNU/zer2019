@@ -16,6 +16,14 @@ H_left = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
  [ 8.77530407e-01,  2.06530134e+00, -3.14076391e+02],
  [ 3.09604396e-04,  6.04023151e-03,  1.00000000e+00]]
 )
+
+H_right = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
+ [ 8.77530407e-01,  2.06530134e+00, -3.14076391e+02],
+ [ 3.09604396e-04,  6.04023151e-03,  1.00000000e+00]]
+)
+
+Z_DEBUG = True
+
 def warp_image(image, homography):
     im_out = cv2.warpPerspective(image, homography, (600, 600))
     return im_out
@@ -33,7 +41,7 @@ def imagePublisher():
     lane_pub = rospy.Publisher('raw_img', Image, queue_size=1)
     traffic_pub = rospy.Publisher('traffic_image', Image, queue_size=1)
     rospy.init_node('cam_node', anonymous=True)
-    rate=rospy.Rate(20)#20hz
+    rate=rospy.Rate(30)#30hz
     bridge = CvBridge()
 
     while not rospy.is_shutdown():
@@ -52,10 +60,10 @@ def imagePublisher():
 
         # PUBLISH
         lane_pub.publish(merged_msg)
-
-        cv2.imshow("result", merged)
-        if cv2.waitKey(1)==27:
-            break
+        if Z_DEBUG:
+            cv2.imshow("result", merged)
+            if cv2.waitKey(1)==27:
+                break
     cv2.destroyAllWindows()
 
     cam_front.release()
@@ -67,8 +75,8 @@ if __name__ == '__main__':
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(1)
-            cam_left = cv2.VideoCapture(2)
+            cam_front = cv2.VideoCapture(2)
+            cam_left = cv2.VideoCapture(1)
             
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
