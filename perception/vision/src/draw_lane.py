@@ -58,8 +58,8 @@ def callback(data):
     yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
     green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
     
-    #mask = yellow_mask
-    mask = green_mask
+    mask = yellow_mask
+    #mask = green_mask
     points_mask = np.where(mask>0)
 
     x_vals = points_mask[1]

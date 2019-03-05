@@ -11,13 +11,32 @@ IMAGE_SIZE = 600
 MAP_SIZE = 200
 VIEW_SIZE = 450
 
+'''
+------------------------------------------------------------------------
+SET DEFAULT VALUES
+------------------------------------------------------------------------
+'''
 img_lane_map = np.zeros((200,200))
+is_auto = False
+estop = False
+gear = 0   # 0: drive gear 1: neutral 2: rear
+brake = 0  # 0~200
+speed = 0  # m/s
+steer = 0 # degree
+encoder = 0
+alive = 0
 
 def callback_vehicle_state(vs_data):
+    global is_auto, estop, gear, brake, speed, steer, encoder, alive
+    is_auto = vs_data.is_auto
+    estop = vs_data.estop
+    gear = vs_data.gear
+    brake = vs_data.brake
+    speed = vs_data.speed
+    steer = vs_data.steer
+    encoder = vs_data.encoder
+    alive = vs_data.alive
     
-    print(vs_data.is_auto)
-    #rospy.loginfo(rospy.get_caller_id() + "I heard %s", data.data)from cv_bridge import CvBridge, CvBridgeError
-
 def callback_lane_map(lane_map):
     global img_lane_map
     img_lane_map = bridge.imgmsg_to_cv2(lane_map, 'mono8')
@@ -58,6 +77,37 @@ if __name__ == '__main__':
         monitor_img[50:50+VIEW_SIZE,50:50+VIEW_SIZE] = raw_map_view
         monitor_img[50:50+VIEW_SIZE,100+VIEW_SIZE:100+VIEW_SIZE*2,2] = lane_map_view
         
+        #Generate Vehicle State text - is_auto
+        output = "Mode : "
+        if(is_auto):
+            output = output + "Auto"
+        else:
+            output = output + "Manual"
+        cv2.putText(monitor_img, output, (50,100+VIEW_SIZE), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        #Generate Vehicle State text - gear
+        output = "Gear : "
+        if(gear==0):
+            output = output + "Forward"
+        elif(gear==1):
+            output = output + "Neutral"
+        elif(gear==2):
+            output = output + "Baccward"
+        cv2.putText(monitor_img, output, (200,100+VIEW_SIZE), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        
+        #Generate Vehicle State text - brake
+        output = "Brake : " + str(brake)
+        cv2.putText(monitor_img, output, (400,100+VIEW_SIZE), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        
+        #Generate Vehicle State text - speed
+        speed = round(speed, 1)
+        output = "Speed : " + str(speed) + "m/s"
+        cv2.putText(monitor_img, output, (550,100+VIEW_SIZE), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+        
+        #Generate Vehicle State text - steer
+        steer = int(steer)
+        output = "Steer : " + '{:3d}'.format(steer)
+        cv2.putText(monitor_img, output, (750,100+VIEW_SIZE), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 1, cv2.LINE_AA)
+
         cv2.imshow("Monitor", monitor_img)
         cv2.waitKey(50)
         rate.sleep()
