@@ -58,7 +58,7 @@ def callback(data):
     yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
     green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
     
-    mask = yellow_mask
+    mask = green_mask
     #mask = green_mask
     points_mask = np.where(mask>0)
 
@@ -191,6 +191,7 @@ def callback(data):
     masked_img = masked_img.T
 
     masked_img = cv2.warpAffine(masked_img,M_lane_map,(MAP_SIZE,MAP_SIZE))
+    masked_img = cv2.flip(masked_img,1)
     send_img_lane_map = bridge.cv2_to_imgmsg(masked_img, "mono8")
     pub_lane_map.publish(send_img_lane_map)
 

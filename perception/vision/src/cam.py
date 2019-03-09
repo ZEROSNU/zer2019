@@ -75,8 +75,8 @@ if __name__ == '__main__':
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(2)
-            cam_left = cv2.VideoCapture(1)
+            cam_front = cv2.VideoCapture(1)
+            cam_left = cv2.VideoCapture(2)
             
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
