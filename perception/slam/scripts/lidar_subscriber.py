@@ -94,7 +94,7 @@ def generate_ray_casting_grid_map(r):
     
     ox = [r[i] * math.cos(i * YAW_RES) for i in range(len(r))]
     oy = [r[i] * math.sin(i * YAW_RES) for i in range(len(r))]
-    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8) #장애물 없을 때 0, 있을 때 255
+    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8)
 
     for (x, y) in zip(ox, oy):
 
