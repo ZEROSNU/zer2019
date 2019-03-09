@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 from sensor_msgs.msg import LaserScan, Image
 
-DEBUG = True
+DEBUG = False
 XY_RES = 0.03  # x-y grid resolution [m]
 YAW_RES = 0.00872664619237  # yaw angle resolution [rad] = 0.05 degree
 MIN_X = -3.0
@@ -102,7 +102,7 @@ def generate_ray_casting_grid_map(r):
     
     ox = [r[i] * math.cos(i * YAW_RES) for i in range(len(r))]
     oy = [r[i] * math.sin(i * YAW_RES) for i in range(len(r))]
-    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8)
+    pmap = np.zeros(shape=(LEN_Y, LEN_X), dtype=np.uint8) #장애물 없을 때 0, 있을 때 255
 
     for (x, y) in zip(ox, oy):
 
@@ -122,7 +122,6 @@ def generate_ray_casting_grid_map(r):
         pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 255  # obstacles #added min operation for handling indexerror
         #except IndexError:
          #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
-    pmap = np.rot90(pmap, 3) #added to rotate 90 degrees clockwise
     return pmap
 
 
