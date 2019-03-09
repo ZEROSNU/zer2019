@@ -6,8 +6,6 @@ import time
 import math
 import numpy as np
 
-import matplotlib.pyplot as plt
-
 from sensor_msgs.msg import LaserScan, Image
 
 DEBUG = False
@@ -30,12 +28,6 @@ def callback(data):
     pmap = generate_ray_casting_grid_map(r)
     img_msg = ros_numpy.msgify(Image, pmap, encoding='mono8')
     lidar_map_pub.publish(img_msg)
-
-    if DEBUG:
-        plt.cla()
-        draw_heatmap(pmap)
-        plt.plot(0.0, 0.0, "ob")    #(0,0) dot
-        plt.pause(0.05)             #0.05s pause
 
     # show calculation time
     #t2 = time.time()
@@ -123,16 +115,6 @@ def generate_ray_casting_grid_map(r):
         #except IndexError:
          #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
     return pmap
-
-
-def draw_heatmap(pmap):
-    x, y = np.mgrid[slice(MIN_X, MAX_X, XY_RES),
-                    slice(MIN_Y, MAX_Y, XY_RES)]
-
-    plt.pcolor(x, y, pmap, vmax=1.0, cmap=plt.cm.Blues)
-    plt.xlim(MIN_X, MAX_X)
-    plt.ylim(MIN_Y, MAX_Y)
-
 
 precast = precasting()
 
