@@ -58,7 +58,7 @@ def callback(data):
     yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
     green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
     
-    mask = green_mask
+    mask = yellow_mask
     #mask = green_mask
     points_mask = np.where(mask>0)
 
@@ -200,7 +200,7 @@ def callback(data):
     pub_raw_map.publish(send_img_raw_map)
 
     if Z_DEBUG:
-        cv2.imshow('image',green_mask)
+        cv2.imshow('image',yellow_mask)
         cv2.imshow('color_image',img)
         cv2.imshow('send_image',masked_img)
         cv2.waitKey(1)
