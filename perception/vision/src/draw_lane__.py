@@ -16,7 +16,7 @@ BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
 # Maximum offset pixels from previous lane polynomial
-LANE_ROI_OFFSET = 100
+LANE_ROI_OFFSET = 70
 
 # IMAGE & MAP SIZE (2019 Competition MAP SIZE : 200x200, 1px:3cm)
 IMAGE_SIZE = 600
@@ -161,7 +161,15 @@ class LaneDrawer():
         self.masked_img[mask_left<y_vals] = 255
         self.masked_img[mask_right>y_vals] = 255
 
-        #Draw lines on lane
+        #Draw ROI and lane on lane
+        roi_shift = np.zeros((IMAGE_SIZE,2))
+        roi_shift_ = np.zeros((IMAGE_SIZE,2))
+        roi_shift[:,1] = LANE_ROI_OFFSET
+        roi_shift_[:,1] = -LANE_ROI_OFFSET
+
+        cv2.polylines(self.img, np.int32([polypoints+roi_shift]), False, (0,0,255),2)
+        cv2.polylines(self.img, np.int32([polypoints+roi_shift_]), False, (0,0,255),2)
+
         cv2.polylines(self.img, np.int32([polypoints]), False, (255,0,0),2)
         cv2.polylines(self.img, np.int32([polypoints_left_]), False, (0,255,0),2)
     
