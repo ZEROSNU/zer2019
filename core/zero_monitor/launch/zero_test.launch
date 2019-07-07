@@ -1,0 +1,22 @@
+<launch>
+  <!--
+  contest parameters
+  -->
+  <param name = "/car_name" value = "ZEROSNU" />
+  <param name = "/data_path" value = "$(find zero_monitor)/data/" />
+  <!--
+  node list
+  -->
+  <group ns = "lidar">
+    <node name = "lidar_subscriber" pkg = "lidar" type = "lidar_subscriber.py" output = "screen"/>
+    <node name = "merge_vision" pkg = "lidar" type = "merge_vision.py"/>
+  </group>
+  
+  <group ns = "forward_camera">
+    <node name = "draw_lane" pkg = "forward_camera" type = "draw_lane.py" output = "screen"/>
+    <node name = "fake_cam" pkg = "forward_camera" type = "fake_cam.py"/>
+  </group>
+
+  <node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/>
+
+</launch>

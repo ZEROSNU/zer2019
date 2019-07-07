@@ -1,7 +1,0 @@
-<launch>
-  <param name = "/map_id" value = "car_frame" />
-
-  <node name = "fakemap" pkg = "planner_019" type = "fakemap.py" />
-  <node name = "planner_019" pkg = "planner_019" type = "planner_019" respawn = "true"  output = "screen"/>
-  <node pkg = "rviz" type = "rviz" name = "rviz" />
-</launch>

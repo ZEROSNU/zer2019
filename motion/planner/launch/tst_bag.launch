@@ -1,8 +1,0 @@
-<launch>
-  <param name = "/map_id" value = "/car_frame" />
-
-  <node name = "bagsim" pkg = "planner_019" type = "bagsim.py" />
-  <node name = "planner_019" pkg = "planner_019" type = "planner_019" respawn = "true" output = "screen"/>
-  <node pkg = "rviz" type = "rviz" name = "rviz" />
-  <node pkg = "rosbag" type = "play" name = "player" args = "--clock $(find planner_019)/bagfiles/CarSim01.bag" respawn = "true"/>
-</launch>
