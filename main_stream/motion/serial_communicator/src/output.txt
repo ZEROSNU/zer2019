@@ -1,0 +1,2 @@
+  S    T    X  AorM Estp gear  speed   steer  brk     enc     alv etx0 etx1
+not initiated

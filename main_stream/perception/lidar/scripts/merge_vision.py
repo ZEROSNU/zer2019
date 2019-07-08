@@ -37,7 +37,7 @@ if __name__ == "__main__":
     merger = ImageMerger()
     rospy.init_node('map_merger', anonymous=True)
     rospy.Subscriber('/lane_map', Image, lane_callback)
-    rospy.Subscriber('/lidar_map', Image, lidar_callback)
+    rospy.Subscriber('lidar_map', Image, lidar_callback)
     obstacle_map_pub = rospy.Publisher('/obstacle_map', Image, queue_size=1)
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():

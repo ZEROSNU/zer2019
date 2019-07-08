@@ -212,8 +212,8 @@ if __name__ == '__main__':
 
     bridge = CvBridge()
     pub_lane_map = rospy.Publisher('/lane_map', Image, queue_size=1)
-    pub_raw_map = rospy.Publisher('/raw_map', Image, queue_size=1)
+    pub_raw_map = rospy.Publisher('/raw_local_map', Image, queue_size=1)
 
-    rospy.Subscriber("raw_img", Image, callback)
+    rospy.Subscriber("/raw_img", Image, callback)
 
     rospy.spin()

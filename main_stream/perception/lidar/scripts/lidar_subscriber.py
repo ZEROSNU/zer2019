@@ -122,5 +122,5 @@ if __name__ == "__main__":
     
     rospy.init_node('lidar_subscriber', anonymous=True)
     rospy.Subscriber("/scan", LaserScan, callback)
-    lidar_map_pub = rospy.Publisher('/lidar_map', Image, queue_size=1)
+    lidar_map_pub = rospy.Publisher('lidar_map', Image, queue_size=1)
     rospy.spin()

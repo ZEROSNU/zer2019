@@ -10,7 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 
 
 def send_image():
-    pub = rospy.Publisher('raw_img', Image, queue_size=10)
+    pub = rospy.Publisher('/raw_img', Image, queue_size=10)
     rospy.init_node('cam_node', anonymous=True)
     rate = rospy.Rate(10) # N hz
 
