@@ -59,8 +59,8 @@ class tracker:
                 self.current_path = Path()
                 self.update_path = False
 
-                self.latest_velocity_level = Int16()
-                self.velocity_level = Int16()
+                self.latest_velocity_level = Float32()
+                self.velocity_level = Float32()
                 self.update_velocity_level = False
 
                 self.latest_gear_level = Int8()
@@ -83,17 +83,16 @@ class tracker:
 
         def Path_estimate(self, initialize_time):
                 try:
-                        curvature = self.Steer_to_curvature(self.vehicle_state.steer)
                         passed_time = initialize_time - self.control_time_buff[-1]
                         
                         # Estimate current vehicle state (position and orientation)
-                        theta = self.vehicle_state.speed * curvature * passed_time
-                        shift_y = math.sin(theta)/curvature
+                        theta = self.vehicle_state.speed * self.curvature * passed_time
+                        shift_y = math.sin(theta)/self.curvature
                         if self.vehicle_state.steer >= 0.:
-                                shift_x = (1. - math.cos(theta))/curvature
+                                shift_x = (1. - math.cos(theta))/self.curvature
                                 rad_angle = math.pi/2. - theta
                         else:
-                                shitf_x = (math.cos(theta) - 1.)/curvature
+                                shitf_x = (math.cos(theta) - 1.)/self.curvature
                                 rad_angle = math.pi/2. + theta
 
                         #calculate quaternion rotate
@@ -136,21 +135,17 @@ class tracker:
                         print("Set_look_ahead_point failed.")
                         return self.EMERGENCY_BRAKE
 
-        def Deicide_steering_angle(self, temp_control_mode):
+        def Deicide_curvature(self, temp_control_mode):
                 try:
-                        #TODO
-                        curvature = 1.
                         if (self.look_ahead_point.pose.position.x == 0) and (self.look_ahead_point.pose.position.y == 0):
-                                return self.EMERGENCY_BRAKE
+                                self.curvature = 0
                         else:
                                 if self.look_ahead_point.pose.position.x >= 0.:
-                                        curvature = 2*self.look_ahead_point.pose.position.x/(self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2)
+                                        self.curvature = 2*self.look_ahead_point.pose.position.x/(self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2)
                                 else:
-                                        curvature = -2*self.look_ahead_point.pose.position.x/(self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2)
-                                self.control.steer = self.Curvature_to_steer(curvature)
+                                        self.curvature = -2*self.look_ahead_point.pose.position.x/(self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2)
                         return temp_control_mode
 
-                        
                 except:
                         print("Deicide_steering_angle failed.")
                         return self.EMERGENCY_BRAKE
@@ -178,16 +173,6 @@ class tracker:
                                 self.control.steer = self.MIN_steer
                         else:
                                 pass
-        
-        def Steer_to_curvature(self, steer):
-                # We need some expriments
-                curvature = 1.1              
-                return curvature
-
-        def Curvature_to_steer(self, curvature):
-                # We need some expriments
-                steer = 1.1
-                return steer
 
         def Set_look_ahead_distance(self):
                 #TODO adaptive look_ahead_distance
@@ -234,6 +219,13 @@ class tracker:
                 else:
                         pass
                 self.update_gear_level = False
+
+                # Update curvature
+                if self.update_curvature == True:
+                        self.curvature = copy.deepcopy(self.latest_curvature)
+                else:
+                        pass
+                self.update_curvature = False
                 
                 # Initialize contorl variables
                 self.control.is_auto = False
@@ -263,19 +255,19 @@ class tracker:
                 self.update_path = False
 
                 '''
-                3. Deciding steering angle
+                3. Deciding new curvature
                         1) By path and control mode, we calculate appropriate steering angle.
                 '''
                 if temp_control_mode == self.EMERGENCY_BRAKE:
                         pass
                 else:
                         temp_control_mode = self.Set_look_ahead_point(temp_control_mode)
-                        temp_control_mode = self.Deicide_steering_angle(temp_control_mode)
+                        temp_control_mode = self.Deicide_curvature(temp_control_mode)
 
                 '''
                 4. Post process of main_control_loop
                         1) Save new control variable values at the buffer with current time.
-                        2) Return new control variable.
+                        2) Return new curvature.
                 '''
                 self.Control_post_processing(temp_control_mode)
 
@@ -290,7 +282,7 @@ class tracker:
                 self.control_count += 1
                 
                 print("One main tracking cycle is compeleted.")
-                return self.control
+                return self.curvature
 
 
 main_track = tracker()
@@ -318,6 +310,9 @@ def callbac_update_velocity_level(data):
 def callbac_update_gear_level(data):
         main_track.write_gear_level(data)
 
+def callbac_update_curvature(data):
+        main_track.writ_curvature(data)
+
 
 # Define fuction for Sub and Pub
 def main() :
@@ -326,12 +321,12 @@ def main() :
         #Subscribe
         rospy.Subscriber('planned_path', Path, callbac_update_path)
         rospy.Subscriber('vehicle_state', Control, callbac_update_vehicle_state)
-        rospy.Subscriber('velocity_level', Int16, callbac_update_velocity_level)
+        rospy.Subscriber('velocity_level', Float32, callbac_update_velocity_level)
         rospy.Subscriber('gear_level', Int8, callbac_update_gear_level)
-        rospy.Subscriber('curvarture', Float32, callbac_update_curvature)
+        rospy.Subscriber('current_curvarture', Float32, callbac_update_curvature)
         
         #Publish
-        cont_pub = rospy.Publisher('/ideal_control', Control, queue_size=10)
+        cont_pub = rospy.Publisher('/new_curvature', Float32, queue_size=10)
         temp_pub = rospy.Publisher('/current_path', Path, queue_size=10)
         rate = rospy.Rate(main_track.pub_rate)
         while not rospy.is_shutdown() :
