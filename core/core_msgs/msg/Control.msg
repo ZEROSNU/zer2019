@@ -9,7 +9,7 @@ Header header
 # U_TURN = 5 # when u turn is activated
 # PARK_FORWARD = 6
 # PARK_REVERSE = 7 # when returning to main lane from parking lot
-int16 control_mode
+string control_mode
 
 bool is_auto
 bool estop
@@ -17,4 +17,3 @@ int8 gear
 int16 brake
 float32 speed
 float32 steer
-int64 encoder

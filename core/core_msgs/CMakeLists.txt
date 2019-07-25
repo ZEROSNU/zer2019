@@ -10,18 +10,19 @@ find_package(catkin REQUIRED
 
 add_message_files( DIRECTORY msg
   FILES
-  ROIPointArray.msg
   VehicleState.msg
-  PathArray.msg
-  CenPoint.msg
   Control.msg
-  Estop.msg
-  ParkPoints.msg
+  MissionState.msg
+  LightState.msg
+  Task.msg
+  MotionState.msg
+  VelocityLevel.msg
+  ImuSpeed.msg
+  ActiveNode.msg
 )
 
 add_service_files(
   FILES
-  ToggleMission.srv
 )
 
 generate_messages(DEPENDENCIES   geometry_msgs  sensor_msgs   std_msgs )

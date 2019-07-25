@@ -1,0 +1,68 @@
+<launch>
+  <!--
+  contest parameters
+  -->
+  <param name = "/car_name" value = "ZEROSNU" />
+  <param name = "/data_path" value = "$(find zero_monitor)/data/" />
+  <param name = "/logo_path" value = "$(find zero_monitor)/logo/" />
+  <!--
+  node list
+  -->
+
+  <group ns = "zero_monitor">
+    <node name = "zero_monitor" pkg = "zero_monitor" type = "zero_monitor.py" output = "screen" respawn = "true" />
+  </group>
+
+  <group ns = "imu_encoder">
+    <node name = "imu_encoder" pkg = "imu_encoder" type = "imu_encoder.py"/>
+  </group>
+
+  <group ns = "lidar">
+    <node name = "lidar_subscriber" pkg = "lidar" type = "lidar_subscriber.py"/>
+    <node name = "merge_vision" pkg = "lidar" type = "merge_vision.py"/>
+  </group>
+  
+  <group ns = "forward_camera">
+    <node name = "fake_cam" pkg = "forward_camera" type = "fake_cam.py"/>
+  </group>
+
+
+  <group ns = "raw_local_map">
+    <node name = "draw_lane" pkg = "forward_camera" type = "draw_lane.py"/>
+  </group>
+
+  <group ns = "gps">
+    <node name = "gps" pkg = "gps" type = "gps.py"/>
+  </group>
+
+  <group ns = "traffic_light">
+    <node name = "traffic_light" pkg = "traffic_light" type = "traffic_light.py"/>
+  </group>
+
+  <group ns = "sign_camera">
+    <node name = "sign_camera" pkg = "sign_camera" type = "sign_camera.py"/>
+  </group>
+
+  <group ns = "mission_master">
+    <node name = "mission_master" pkg = "mission_master" type = "mission_master.py"/>
+  </group>
+
+  <group ns = "local_map_generator">
+    <node name = "local_map_generator" pkg = "local_map_generator" type = "local_map_generator.py"/>
+  </group>
+
+  <group ns = "planner">
+    <node name = "planner" pkg = "planner" type = "planner"/>
+  </group>
+
+  <group ns = "path_tracker">
+    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py"/>
+  </group>
+
+  <group ns = "model_estimator">
+    <node name = "model_estimator" pkg = "model_estimator" type = "model_estimator.py"/>
+  </group>
+
+  <!--node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/-->
+
+</launch>
