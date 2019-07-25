@@ -67,12 +67,12 @@ ob::ScopedStatePtr CarSetupComHandle::GetStart(const ob::StateSpacePtr& space, s
         std::cout << "Start:No id found : " << id << std::endl;
         st[0] = 0;
         st[1] = 0;
-        st[2] = 0;
+        st[2] = M_PI/2;
     }
     else if (start[id].count(seq) < 1) {
         st[0] = 0;
         st[1] = 0;
-        st[2] = 0;
+        st[2] = M_PI/2;
         std::cout << "Start:No sequence found : " << seq << std::endl;
     }
     else {

@@ -4,9 +4,15 @@
   -->
   <param name = "/car_name" value = "ZEROSNU" />
   <param name = "/data_path" value = "$(find zero_monitor)/data/" />
+  <param name = "/logo_path" value = "$(find zero_monitor)/logo/" />
   <!--
   node list
   -->
+
+  <group ns = "zero_monitor">
+    <node name = "zero_monitor" pkg = "zero_monitor" type = "zero_monitor.py" output = "screen" respawn = "true" />
+  </group>
+
   <group ns = "imu_encoder">
     <node name = "imu_encoder" pkg = "imu_encoder" type = "imu_encoder.py"/>
   </group>
@@ -57,6 +63,6 @@
     <node name = "model_estimator" pkg = "model_estimator" type = "model_estimator.py"/>
   </group>
 
-  <node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/>
+  <!--node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/-->
 
 </launch>

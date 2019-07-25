@@ -18,6 +18,7 @@ add_message_files( DIRECTORY msg
   MotionState.msg
   VelocityLevel.msg
   ImuSpeed.msg
+  ActiveNode.msg
 )
 
 add_service_files(

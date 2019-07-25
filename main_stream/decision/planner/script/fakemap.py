@@ -45,11 +45,11 @@ class fakemap :
     def makemap(self, height, width) :
         zrs = np.zeros([height, width])
         for i in range(height) :
-            zrs[i][-1] = 1
-        zrs[height/2 : -1]=1
+            zrs[i][-1] = 100
+        zrs[height/2 : -1] = 100
         for i in range(height/4) :
             for j in range(height/4) :
-                zrs[i+height/8][j+height*3/8] = 1
+                zrs[i+height/8][j+height*3/8] = 100
         print zrs
         return zrs.flatten()
 

@@ -10,18 +10,39 @@ from nav_msgs.msg import OccupancyGrid
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import PoseStamped
 from geometry_msgs.msg import TransformStamped
+from core_msgs.msg import ActiveNode
 
 def mainloop():
+    '''
+    code for activate and deactivate the node
+    '''
+    nodename = 'local_map_generator'
+    mainloop.active = True
+    def signalResponse(data) :
+        mainloop.active
+        if 'zero_monitor' in data.active_nodes :
+            if nodename in data.active_nodes :
+                mainloop.active = True
+            else :
+                mainloop.active = False
+        else :
+            rospy.signal_shutdown('no monitor')
+    rospy.Subscriber('/active_nodes', ActiveNode, signalResponse)
+    '''
+    ...
+    '''
     rospy.Subscriber("/motion_state", MotionState, mcb)
     rospy.Subscriber("/raw_local_map", Image, rlmcb)
     pubgoal = rospy.Publisher('/goal_pose', PoseStamped, queue_size = 10)
     pubmap = rospy.Publisher('/local_map', OccupancyGrid, queue_size = 10)
-    pubtf = rospy.Publisher('/tf_information', TFMessage, queue_size = 10)
+    pubtf = rospy.Publisher('/tf', TFMessage, queue_size = 10)
     pubvel = rospy.Publisher('/velocity_level', VelocityLevel, queue_size = 10)
-    rospy.init_node('local_map_generator', anonymous=True)
+    rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
 
     goal = PoseStamped()
+    goal.pose.position.y = 2
+    goal.pose.orientation.w = 1
     goal.header.frame_id = "car_frame"
 
     vellv = VelocityLevel()
@@ -34,7 +55,7 @@ def mainloop():
     simplemap.info.width = 200 #100
     simplemap.info.height = 200 #100
     simplemap.info.origin.position.x = -3 #-25
-    simplemap.info.origin.position.y = -3 #-25
+    simplemap.info.origin.position.y = -0.5 #-25
     simplemap.info.origin.orientation.x = qmap[0]
     simplemap.info.origin.orientation.y = qmap[1]
     simplemap.info.origin.orientation.z = qmap[2]
@@ -45,6 +66,7 @@ def mainloop():
     qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, 0)
     simpletf = TFMessage()
     simpletf.transforms.append(TransformStamped())
+    simpletf.transforms.append(TransformStamped())
     simpletf.transforms[0].header.frame_id = "global_ref"
     simpletf.transforms[0].child_frame_id = "car_frame"
     simpletf.transforms[0].transform.rotation.x = qframe[0]
@@ -53,6 +75,14 @@ def mainloop():
     simpletf.transforms[0].transform.rotation.w = qframe[3]
     simpletf.transforms[0].transform.translation.x = 0
     simpletf.transforms[0].transform.translation.y = 0
+    simpletf.transforms[1].header.frame_id = "car_frame"
+    simpletf.transforms[1].child_frame_id = "camera"
+    simpletf.transforms[1].transform.rotation.x = qframe[0]
+    simpletf.transforms[1].transform.rotation.y = qframe[1]
+    simpletf.transforms[1].transform.rotation.z = qframe[2]
+    simpletf.transforms[1].transform.rotation.w = qframe[3]
+    simpletf.transforms[1].transform.translation.x = 1
+    simpletf.transforms[1].transform.translation.y = 2
     i=0
     while not rospy.is_shutdown():
         simplemap.header.stamp = rospy.Time.now()
@@ -61,11 +91,16 @@ def mainloop():
         goal.header.seq = i
         vellv.header.stamp = rospy.Time.now()
         vellv.header.seq = i
+        simpletf.transforms[0].header.stamp = rospy.Time.now()
+        simpletf.transforms[0].header.seq = i
+        simpletf.transforms[1].header.stamp = rospy.Time.now()
+        simpletf.transforms[1].header.seq = i
         i = i+1
-        pubgoal.publish(goal)
-        pubmap.publish(simplemap)
-        pubtf.publish(simpletf)
-        pubvel.publish(vellv)
+        if mainloop.active :
+            pubgoal.publish(goal)
+            pubmap.publish(simplemap)
+            pubtf.publish(simpletf)
+            pubvel.publish(vellv)
         rate.sleep()
 
 def mcb(data) :
@@ -79,11 +114,10 @@ def rlmcb(data) :
 def makemap(height, width) :
     zrs = np.zeros([height, width])
     for i in range(height) :
-        zrs[i][-1] = 1
-    zrs[height/2 : -1]=1
-    for i in range(height/4) :
-        for j in range(height/4) :
-            zrs[i+height/8][j+height*3/8] = 1
+        zrs[i][-1] = 100
+        zrs[i][-2] = 100
+        zrs[i][-3] = 100
+    zrs[height/2 : -1]=100
     print zrs
     return zrs.flatten()
 

@@ -4,12 +4,31 @@ import rospy
 from core_msgs.msg import VelocityLevel
 from nav_msgs.msg import Path
 from core_msgs.msg import Control
+from core_msgs.msg import ActiveNode #add
 
 def mainloop():
+    '''
+    code for activate and deactivate the node
+    '''
+    nodename = 'path_tracker'
+    mainloop.active = True
+    def signalResponse(data) :
+        mainloop.active
+        if 'zero_monitor' in data.active_nodes :
+            if nodename in data.active_nodes :
+                mainloop.active = True
+            else :
+                mainloop.active = False
+        else :
+            rospy.signal_shutdown('no monitor')
+    rospy.Subscriber('/active_nodes', ActiveNode, signalResponse)
+    '''
+    ...
+    '''
     rospy.Subscriber("/velocity_level", VelocityLevel, vcb)
     rospy.Subscriber("/path", Path, pcb)
     pub = rospy.Publisher('/ideal_control', Control, queue_size = 10)
-    rospy.init_node('path_tracker', anonymous=True)
+    rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
     control = Control()
     control.header.frame_id = 'car_frame'
@@ -18,7 +37,8 @@ def mainloop():
         control.header.stamp = rospy.Time.now()
         control.header.seq = i
         i = i+1
-        pub.publish(control)
+        if mainloop.active :
+            pub.publish(control)
         rate.sleep()
 
 def vcb(data) :

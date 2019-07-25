@@ -1,3 +1,3 @@
 Header header
 
-int16 velocitystate
+float32 velocity_level

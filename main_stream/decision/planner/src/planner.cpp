@@ -17,6 +17,7 @@
 #include <ompl/control/SpaceInformation.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/spaces/RealVectorBounds.h>
+#include "core_msgs/ActiveNode.h"
 
 
 
@@ -39,9 +40,33 @@ void simplecarmodel(const ob::State *state, const oc::Control *control, const do
     sp->as<ob::SE2StateSpace::StateType>()->setYaw(yaw);
 }
 
+bool nodeactivation = true;
+void activecb(core_msgs::ActiveNode::ConstPtr msg) {
+    int length = msg->active_nodes.size();
+    bool kill = true;
+    std::string nn = "path_planner";
+    std::string monitor = "zero_monitor";
+    for (int i = 0; i < length ; i++) {
+        if ( nn.compare(msg->active_nodes[i]) == 0 ) {
+            nodeactivation = true;
+            std::cout << "node activated" << std::endl;
+            return;
+        }
+        if ( monitor.compare(msg->active_nodes[i]) == 0 ) {
+            kill = false;
+        }
+    }
+    nodeactivation = false;
+    if (kill) {
+        ros::shutdown();
+    }
+    std::cout << "node deactivated" << std::endl;
+    return;
+}
 
 int main (int argc, char **argv) {
-    std::string nn = "planner";
+
+    std::string nn = "path_planner";
     ob::StateSpacePtr sspace(std::make_shared<ob::SE2StateSpace>());
     oc::ControlSpacePtr cspace(std::make_shared<oc::RealVectorControlSpace>(sspace, 2));
     oc::SpaceInformationPtr si(std::make_shared<oc::SpaceInformation>(sspace, cspace));
@@ -57,9 +82,12 @@ int main (int argc, char **argv) {
     double AxlesLength = 1.0;
     double StepSize = 0.01;
     ros::NodeHandle nh;
-    std::string map_id;
+
+
+    ros::Subscriber activenode = nh.subscribe("/active_nodes", 1000, activecb);
+    
+    std::string map_id = "car_frame";
     bool withgear = false;
-    nh.getParam("/map_id", map_id);
     CarSetupComHandle comh = CarSetupComHandle(argc, argv, nn);
     comh.SimpleSetup();
     comh.SetTopicPub <geometry_msgs::PoseArray> ("/tree");
@@ -70,12 +98,11 @@ int main (int argc, char **argv) {
     comh.SetTopicPub <visualization_msgs::MarkerArray> (PotentialFieldTopic);
     //*/
     ompl::doRRTPtr pl(std::make_shared<ompl::doRRT>(si, mm, pm));
-    int mseq = -1;
     while(ros::ok()) {
-        if(mseq<CarSetupComHandle::GetLatestMapSeq()) {
+        if(CarSetupComHandle::isUpdatedMap()) {
             ss.clear();
             int gseq = CarSetupComHandle::GetLatestGoalSeq();
-            mseq = CarSetupComHandle::GetLatestMapSeq();
+            int mseq = CarSetupComHandle::GetLatestMapSeq();
             int sseq = CarSetupComHandle::GetLatestStartSeq();
             std::cout << "planning sequence number : " << gseq << std::endl;
 
@@ -143,7 +170,7 @@ int main (int argc, char **argv) {
             //pl->setCheckTime(false);
             */
             ss.setPlanner(pl);
-            comh.ShowAll();
+            //comh.ShowAll();
             //*/
             ss.setStartAndGoalStates(*st,*gl);
             ss.getSpaceInformation()->setStateValidityCheckingResolution(0.005);
@@ -158,7 +185,7 @@ int main (int argc, char **argv) {
             geometry_msgs::PoseArray treemsg;
             treemsg.header.stamp = ros::Time::now();
             treemsg.header.seq = sseq;
-            treemsg.header.frame_id = "/car_frame";
+            treemsg.header.frame_id = "car_frame";
             treemsg.poses.resize(tree.size());
             std::vector<ob::State*>::iterator it;
             int n;
@@ -175,14 +202,16 @@ int main (int argc, char **argv) {
             }
             comh.PublishTopicPub("/tree", treemsg);
             //pl->showTree();
-            pl->showCalcTime();
+            //pl->showCalcTime();
             //*/
             if (solved) {
                 std::cout << "Found solution:" << std::endl;
                 //ss.simplifySolution();
                 oc::PathControl path = ss.getSolutionPath();
                 //path.printAsMatrix(std::cout);
-                comh.PublishPath(map_id, mseq, path, withgear);
+                if(nodeactivation) {
+                    comh.PublishPath(map_id, mseq, path, withgear);
+                }
                 //if(comh.TransformPath("map", map_id, comh.GetLatestBaseSeq("map", map_id), 2, path)) {
 //                    std::cout << "transformed successfully!!!!!!!!!!!!!" << std::endl;
                 //}

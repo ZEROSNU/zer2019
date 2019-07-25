@@ -1,3 +1,4 @@
 Header header
 
-int16 motionstate
+string motion_state
+bool stop_line

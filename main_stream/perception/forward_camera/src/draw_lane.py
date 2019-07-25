@@ -34,7 +34,7 @@ LANE_WIDTH = 280
 NO_LANE_COUNT = 0
 
 # Debug Mode
-Z_DEBUG = True
+Z_DEBUG = False
 
 def callback(data):
 

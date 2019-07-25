@@ -1,3 +1,3 @@
 Header header
 
-int16 imuspeed
+float32 imu_speed

@@ -56,7 +56,7 @@ class CarSetupComHandle {
     void GoalCB(const geometry_msgs::PoseStamped::ConstPtr& fin);
     static ob::ScopedStatePtr GetGoal(const ob::StateSpacePtr &space, std::string id, int seq);
 
-    void SetBase(const std::string topic = "/tf_information");
+    void SetBase(const std::string topic = "/tf");
     void BaseCB(const tf2_msgs::TFMessage::ConstPtr& bs);
     static geometry_msgs::TransformStampedConstPtr GetBase(std::string from_id, std::string to_id, int seq);
 

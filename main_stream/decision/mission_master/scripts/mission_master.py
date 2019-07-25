@@ -5,13 +5,32 @@ from core_msgs.msg import MissionState
 from core_msgs.msg import LightState
 from core_msgs.msg import Task
 from core_msgs.msg import MotionState
+from core_msgs.msg import ActiveNode
 
 def mainloop():
+    '''
+    code for activate and deactivate the node
+    '''
+    nodename = 'mission_master'
+    mainloop.active = True
+    def signalResponse(data) :
+        mainloop.active
+        if 'zero_monitor' in data.active_nodes :
+            if nodename in data.active_nodes :
+                mainloop.active = True
+            else :
+                mainloop.active = False
+        else :
+            rospy.signal_shutdown('no monitor')
+    rospy.Subscriber('/active_nodes', ActiveNode, signalResponse)
+    '''
+    ...
+    '''
     rospy.Subscriber("/mission_state", MissionState, mscb)
     rospy.Subscriber("/light_state", LightState, lscb)
     rospy.Subscriber("/task", Task, tcb)
     pub = rospy.Publisher('/motion_state', MotionState, queue_size = 10)
-    rospy.init_node('mission_master', anonymous=True)
+    rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
     motion = MotionState()
     motion.header.frame_id = 'gps'
@@ -20,7 +39,8 @@ def mainloop():
         motion.header.stamp = rospy.Time.now()
         motion.header.seq = i
         i = i+1
-        pub.publish(motion)
+        if mainloop.active :
+            pub.publish(motion)
         rate.sleep()
 
 def mscb(data) :
