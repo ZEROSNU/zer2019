@@ -3,7 +3,6 @@
 import rospy
 from core_msgs.msg import MissionState
 from core_msgs.msg import LightState
-from core_msgs.msg import Task
 from core_msgs.msg import MotionState
 from core_msgs.msg import ActiveNode
 
@@ -28,7 +27,7 @@ def mainloop():
     '''
     rospy.Subscriber("/mission_state", MissionState, mscb)
     rospy.Subscriber("/light_state", LightState, lscb)
-    rospy.Subscriber("/task", Task, tcb)
+    rospy.Subscriber("/task", MissionState, tcb)
     pub = rospy.Publisher('/motion_state', MotionState, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz

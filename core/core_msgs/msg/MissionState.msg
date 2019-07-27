@@ -10,6 +10,5 @@ Header header
 # SCHOOL_ZONE
 # SPEED_BUST
 # PARKING
-# BUS_ONLY
 
 string mission_state

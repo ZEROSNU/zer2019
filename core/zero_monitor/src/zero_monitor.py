@@ -19,7 +19,6 @@ from std_msgs.msg import Header
 from sensor_msgs.msg import Image
 from core_msgs.msg import MissionState
 from core_msgs.msg import LightState
-from core_msgs.msg import Task
 from core_msgs.msg import MotionState
 from core_msgs.msg import ImuSpeed
 from core_msgs.msg import Control
@@ -123,8 +122,6 @@ class Topic(BaseWidget) :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackMissionState)
         elif self.dform == LightState :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackLightState)
-        elif self.dform == Task :
-            self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackTask)
         elif self.dform == MotionState :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackMotionState)
         elif self.dform == OccupancyGrid :
@@ -173,12 +170,6 @@ class Topic(BaseWidget) :
         self._yellow.value = data.yellow
         self._green.value = data.green
         self._left.value = data.left
-    def __callbackTask(self, data) :
-        self._header_seq.value = data.header.seq
-        self._header_stamp_secs.value = data.header.stamp.secs
-        self._header_stamp_nsecs.value = data.header.stamp.nsecs
-        self._header_frame_id.value = data.header.frame_id
-        self._task.value = data.task
     def __callbackMotionState(self, data) :
         self._header_seq.value = data.header.seq
         self._header_stamp_secs.value = data.header.stamp.secs
@@ -414,11 +405,6 @@ class Topic(BaseWidget) :
                 pubData.green = self._green.value
                 pubData.left = self._left.value
                 self.pub.publish(pubData)
-            elif self.dform == Task :
-                head.frame_id = self._header_frame_id.value
-                pubData = Task()
-                pubData.header = head
-                pubData.task = self._task.value
                 self.pub.publish(pubData)
             elif self.dform == MotionState :
                 head.frame_id = self._header_frame_id.value
@@ -581,9 +567,6 @@ class Topic(BaseWidget) :
             self._left = ControlSlider('left')
             self._left.max = 1
             self.formset[1].append('_left')
-        elif self.dform == Task :
-            self._task = ControlText('task')
-            self.formset[1].append('_task')
         elif self.dform == MotionState :
             self._motion_state = ControlText('motion_state')
             self.formset[1].append('_motion_state')
@@ -786,7 +769,7 @@ class MainMonitor(BaseWidget) :
         self._topicMissionState = Topic.names['/mission_state'].button
         Topic('/light_state', LightState)
         self._topicLightState = Topic.names['/light_state'].button
-        Topic('/task', Task)
+        Topic('/task', MissionState)
         self._topicTask = Topic.names['/task'].button
         Topic('/motion_state', MotionState)
         self._topicMotionState = Topic.names['/motion_state'].button

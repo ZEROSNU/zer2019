@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
-from core_msgs.msg import Task
+from core_msgs.msg import MissionState
 from core_msgs.msg import ActiveNode
 
 def mainloop():
@@ -23,10 +23,10 @@ def mainloop():
     '''
     ...
     '''
-    pub = rospy.Publisher('/task', Task, queue_size = 10)
+    pub = rospy.Publisher('/task', MissionState, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
-    task = Task()
+    task = MissionState()
     i=0
     while not rospy.is_shutdown():
         task.header.stamp = rospy.Time.now()

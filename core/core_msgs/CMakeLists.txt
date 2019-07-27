@@ -14,15 +14,10 @@ add_message_files( DIRECTORY msg
   Control.msg
   MissionState.msg
   LightState.msg
-  Task.msg
   MotionState.msg
   VelocityLevel.msg
   ImuSpeed.msg
   ActiveNode.msg
-)
-
-add_service_files(
-  FILES
 )
 
 generate_messages(DEPENDENCIES   geometry_msgs  sensor_msgs   std_msgs )
