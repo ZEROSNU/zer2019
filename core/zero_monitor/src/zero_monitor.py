@@ -210,8 +210,11 @@ class Topic(BaseWidget) :
     def __callbackTFMessage(self, data) :
         for i in data.transforms :
             tag = i.header.frame_id + " to " + i.child_frame_id
-            self._transforms += (tag, tag)
-            if self._transforms.value == tag :
+            if not (i.child_frame_id in self._data.keys()) :
+                self._data[i.child_frame_id] = {}
+            self._data[i.child_frame_id][i.header.frame_id] = i
+            self._transforms += (tag, [i.child_frame_id,i.header.frame_id])
+            if self._transforms.value == [i.child_frame_id,i.header.frame_id] :
                 self._transforms_header_seq.value = i.header.seq
                 self._transforms_header_stamp_secs.value = i.header.stamp.secs
                 self._transforms_header_stamp_nsecs.value = i.header.stamp.nsecs
@@ -362,6 +365,29 @@ class Topic(BaseWidget) :
             if self._img_path_type.value != 0 :
                 del self._poses[self._img_path_type.value - 1]
                 self.__dataToImg()
+    def __changeTfmessage(self) :
+        val = self._transforms.value
+        if val == None :
+            return
+        i = self._data[val[0]][val[1]]
+        if self._transforms.value == [i.child_frame_id,i.header.frame_id] :
+            self._transforms_header_seq.value = i.header.seq
+            self._transforms_header_stamp_secs.value = i.header.stamp.secs
+            self._transforms_header_stamp_nsecs.value = i.header.stamp.nsecs
+            self._transforms_header_frame_id.value = i.header.frame_id
+            self._transforms_child_frame_id.value = i.child_frame_id
+            self._transforms_transform_translation_x.value = i.transform.translation.x
+            self._transforms_transform_translation_y.value = i.transform.translation.y
+            self._transforms_transform_translation_z.value = i.transform.translation.z
+            self._transforms_transform_rotation_x.value = i.transform.rotation.x
+            self._transforms_transform_rotation_y.value = i.transform.rotation.y
+            self._transforms_transform_rotation_z.value = i.transform.rotation.z
+            self._transforms_transform_rotation_w.value = i.transform.rotation.w
+    def __setState(self) :
+        if self.dform == MissionState :
+            self._mission_state.value = self._setState.value
+        elif self.dform == MotionState :
+            self._motion_state.value = self._setState.value
 
     def __buttonAction(self) :
         if self.button.checked == True :
@@ -551,6 +577,20 @@ class Topic(BaseWidget) :
         elif self.dform == MissionState :
             self._mission_state = ControlText('mission_state')
             self.formset[1].append('_mission_state')
+            self._setState = ControlCombo('set mission state as')
+            self._setState.add_item('DRIVING_SECTION')
+            self._setState.add_item('INTERSECTION_LEFT')
+            self._setState.add_item('INTERSECTION_RIGHT')
+            self._setState.add_item('INTERSECTION_STRAIGHT')
+            self._setState.add_item('OBSTACLE_STATIC')
+            self._setState.add_item('OBSTACLE_SUDDEN')
+            self._setState.add_item('CROSSWALK')
+            self._setState.add_item('SCHOOL_ZONE')
+            self._setState.add_item('SPEED_BUST')
+            self._setState.add_item('PARKING')
+            self._setStateButton = ControlButton('Set')
+            self._setStateButton.value = self.__setState
+            self.formset[1].append(('_setState', '_setStateButton'))
         elif self.dform == LightState :
             self._light_found = ControlSlider('light_found')
             self._light_found.max = 1
@@ -570,6 +610,16 @@ class Topic(BaseWidget) :
         elif self.dform == MotionState :
             self._motion_state = ControlText('motion_state')
             self.formset[1].append('_motion_state')
+            self._setState = ControlCombo('set motion state as')
+            self._setState.add_item('FORWARD_MOTION')
+            self._setState.add_item('FORWARD_MOTION_SLOW')
+            self._setState.add_item('HALT')
+            self._setState.add_item('LEFT_MOTION')
+            self._setState.add_item('RIGHT_MOTION')
+            self._setState.add_item('PARKING')
+            self._setStateButton = ControlButton('Set')
+            self._setStateButton.value = self.__setState
+            self.formset[1].append(('_setState', '_setStateButton'))
         elif self.dform == OccupancyGrid :
             self._info_map_load_time_secs = ControlNumber('info.map_load_time.secs')
             self._info_map_load_time_secs.max = 1000000000000
@@ -644,7 +694,9 @@ class Topic(BaseWidget) :
             self._pose_orientation_w.decimals = 3
             self.formset[1].append( ('_pose_orientation_x', '_pose_orientation_y', '_pose_orientation_z', '_pose_orientation_w') )
         elif self.dform == TFMessage :
+            self._data = {}
             self._transforms = ControlCombo('transforms')
+            self._transforms.changed_event = self.__changeTfmessage
             self.formset[1].append( ('_transforms'))
             self._transforms_header_seq = ControlNumber('header.seq')
             self._transforms_header_seq.max = 1000000
@@ -707,7 +759,7 @@ class Topic(BaseWidget) :
             self._is_auto = ControlSlider('is_auto')
             self._is_auto.max = 1
             self.formset[1].append('_is_auto')
-            self._estop = ControlSlider('_estop')
+            self._estop = ControlSlider('estop')
             self._estop.max = 1
             self.formset[1].append('_estop')
             self._gear = ControlSlider('gear')
@@ -913,13 +965,23 @@ class MainMonitor(BaseWidget) :
             img = np.concatenate((img, img, img), axis = 2)
 
             tmp = None
-            tr = np.array([[1/Topic.names['/path']._res,0,Topic.names['/path']._width/2],
+            
+            pathf2mapf = self.__getTFMatrix(Topic.names['/path']._header_frame_id.value,Topic.names['/local_map']._header_frame_id.value)
+            yaw = 2 * np.arctan2(Topic.names['/local_map']._info_origin_orientation_z.value, Topic.names['/local_map']._info_origin_orientation_w.value)
+            dim2rot = np.array([[np.cos(yaw),np.sin(yaw)], [-np.sin(yaw),np.cos(yaw)]] )
+            pt = np.array([[ -Topic.names['/local_map']._info_origin_position_x.value], [ -Topic.names['/local_map']._info_origin_position_y.value]])
+            pt = np.dot(dim2rot,pt)
+            mapf2map = np.identity(3)
+            mapf2map[:2,:2] = dim2rot
+            mapf2map[:2,2:3] = pt
+            map2img = np.array([[1/Topic.names['/path']._res,0,0],
                             [0,-1/Topic.names['/path']._res,Topic.names['/path']._height]])
-
+            tr = np.dot(mapf2map,pathf2mapf)
+            tr = np.dot(map2img,tr)
             for pose in Topic.names['/path']._poses :
                 yaw = 2 * np.arctan2(pose.pose.orientation.z, pose.pose.orientation.w)
-                pt1 = tuple(np.dot(tr,np.array([pose.pose.position.x, pose.pose.position.y,1])).reshape(1,-1)[0].astype('int'))
-                pt2 = tuple(np.dot(tr,np.array([pose.pose.position.x + Topic.names['/path']._delta*np.cos(yaw), pose.pose.position.y + Topic.names['/path']._delta*np.sin(yaw),1])).reshape(1,-1)[0].astype('int'))
+                pt1 = tuple(np.dot(tr,np.array([[pose.pose.position.x], [pose.pose.position.y],[1]])).astype('int'))
+                pt2 = tuple(np.dot(tr,np.array([[pose.pose.position.x + Topic.names['/path']._delta*np.cos(yaw)], [pose.pose.position.y + Topic.names['/path']._delta*np.sin(yaw)],[1]])).astype('int'))
                 cv2.arrowedLine(img, pt1, pt2, (0,0,255), 1)
             for pose in Topic.names['/path']._poses :
                 if tmp!=None :
@@ -932,6 +994,42 @@ class MainMonitor(BaseWidget) :
             cv2.imshow('overall data', img)
         
         cv2.destroyWindow('overall data')
+        
+    def __getTFMatrix(self, child_frame, mother_frame) :
+        matrix = np.zeros([3,3])
+        print 'mother : ' + mother_frame
+        print 'child : ' + child_frame
+        if child_frame == mother_frame :
+            matrix = np.identity(3)
+        print Topic.names['/tf']._data.keys()
+        if child_frame in Topic.names['/tf']._data.keys() :
+            print 'child frame in first keys'
+            print Topic.names['/tf']._data[child_frame].keys()
+            if mother_frame in Topic.names['/tf']._data[child_frame].keys() :
+                print 'child frame in second keys'
+                tf = Topic.names['/tf']._data[child_frame][mother_frame]
+                yaw = 2 * np.arctan2(tf.transform.rotation.z, tf.transform.rotation.w)
+                matrix = np.array([ [np.cos(yaw), -np.sin(yaw), tf.transform.translation.x],
+                                    [np.sin(yaw), np.cos(yaw), tf.transform.translation.y],
+                                    [0, 0, 1] ])
+        if mother_frame in Topic.names['/tf']._data.keys() :
+            print 'mother frame in first keys'
+            print Topic.names['/tf']._data[mother_frame].keys()
+            if child_frame in Topic.names['/tf']._data[mother_frame].keys() :
+                print 'mother frame in second keys'
+                tf = Topic.names['/tf']._data[mother_frame][child_frame]
+                yaw = 2 * np.arctan2(tf.transform.rotation.z, tf.transform.rotation.w)
+                tmp = np.array([[np.cos(yaw),np.sin(yaw)], [-np.sin(yaw),np.cos(yaw)]] )
+                pt = np.array([[ -tf.transform.translation.x], [ -tf.transform.translation.y]])
+                pt = np.dot(tmp,pt)
+                matrix = np.identity(3)
+                matrix[:2,:2] = tmp
+                matrix[:2,2:3] = pt
+        if matrix[2][2] == 0 :
+            print "no tf matrix"
+            return np.identity(3)
+        else :
+            return matrix
 
 
 
