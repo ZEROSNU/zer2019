@@ -3,7 +3,7 @@
 import rospy
 from core_msgs.msg import VelocityLevel
 from nav_msgs.msg import Path
-from core_msgs.msg import Curvature
+from core_msgs.msg import Control
 from core_msgs.msg import ActiveNode #add
 
 def mainloop():
@@ -27,18 +27,18 @@ def mainloop():
     '''
     rospy.Subscriber("/velocity_level", VelocityLevel, vcb)
     rospy.Subscriber("/path", Path, pcb)
-    pub = rospy.Publisher('/curvature', Curvature, queue_size = 10)
+    pub = rospy.Publisher('/ideal_control', Control, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
-    curv = Curvature()
-    curv.header.frame_id = 'car_frame'
+    control = Control()
+    control.header.frame_id = 'car_frame'
     i=0
     while not rospy.is_shutdown():
-        curv.header.stamp = rospy.Time.now()
-        curv.header.seq = i
+        control.header.stamp = rospy.Time.now()
+        control.header.seq = i
         i = i+1
         if mainloop.active :
-            pub.publish(curv)
+            pub.publish(control)
         rate.sleep()
 
 def vcb(data) :
