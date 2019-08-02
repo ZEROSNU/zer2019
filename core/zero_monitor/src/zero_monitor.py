@@ -25,6 +25,7 @@ from core_msgs.msg import Control
 from core_msgs.msg import VehicleState
 from core_msgs.msg import VelocityLevel
 from core_msgs.msg import ActiveNode
+from core_msgs.msg import Curvature
 from nav_msgs.msg import Path
 from nav_msgs.msg import OccupancyGrid
 from tf2_msgs.msg import TFMessage
@@ -140,6 +141,8 @@ class Topic(BaseWidget) :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackImuSpeed)
         elif self.dform == VehicleState :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackVehicleState)
+        elif self.dform == Curvature :
+            self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackCurvature)
 #callbackfunctions
     def __callbackImage(self, data) :
         self._header_seq.value = data.header.seq
@@ -272,6 +275,12 @@ class Topic(BaseWidget) :
         self._steer.value = data.steer
         self._encoder.value = data.encoder
         self._alive.value = data.alive
+    def __callbackCurvature(self, data) :
+        self._header_seq.value = data.header.seq
+        self._header_stamp_secs.value = data.header.stamp.secs
+        self._header_stamp_nsecs.value = data.header.stamp.nsecs
+        self._header_frame_id.value = data.header.frame_id
+        self._curvature.value = data.curvature
     def __callbackMouse(self, event, x, y, flags, param) :
         for i in self.pubs.keys() :
             if self.pubs[i]._deactivate.checked == False :
@@ -529,6 +538,12 @@ class Topic(BaseWidget) :
                 pubData.steer = self._steer.value
                 pubData.encoder = self._encoder.value
                 pubData.alive = self._alive.value
+                self.pub.publish(pubData)
+            elif self.dform == Curvature :
+                head.frame_id = self._header_frame_id.value
+                pubData = Curvature()
+                pubData.header = head
+                pubData.curvature = self._curvature.value
                 self.pub.publish(pubData)
             
             rate.sleep()
@@ -804,6 +819,11 @@ class Topic(BaseWidget) :
             self._alive = ControlNumber('alive')
             self._alive.max = 255
             self.formset[1].append('_alive')
+        elif self.dform == Curvature :
+            self._curvature = ControlNumber('curvature')
+            self._curvature.max = 1000
+            self._curvature.decimals = 3
+            self.formset[1].append('_curvature')
 
 class MainMonitor(BaseWidget) :
     def __init__(self) :
@@ -835,8 +855,8 @@ class MainMonitor(BaseWidget) :
         self._topicVelocityLevel = Topic.names['/velocity_level'].button
         Topic('/path', Path)
         self._topicPath = Topic.names['/path'].button
-        Topic('/ideal_control', Control)
-        self._topicIdealControl = Topic.names['/ideal_control'].button
+        Topic('/curvature', Curvature)
+        self._topicCurvature = Topic.names['/curvature'].button
         Topic('/imu_speed', ImuSpeed)
         self._topicImuSpeed = Topic.names['/imu_speed'].button
         Topic('/calibrated_control', Control)
@@ -891,10 +911,11 @@ class MainMonitor(BaseWidget) :
         self._nodePathTracker = Node.names['path_tracker'].button
         Node.names['path_tracker'].setSub('/velocity_level')
         Node.names['path_tracker'].setSub('/path')
-        Node.names['path_tracker'].setPub('/ideal_control')
+        Node.names['path_tracker'].setPub('/curvature')
         Node('model_estimator')
         self._nodeModelEstimator = Node.names['model_estimator'].button
-        Node.names['model_estimator'].setSub('/ideal_control')
+        Node.names['model_estimator'].setSub('/curvature')
+        Node.names['model_estimator'].setSub('/velocity_level')
         Node.names['model_estimator'].setPub('/calibrated_control')
         Node('serial_communicator')
         self._nodeSerialCommunicator = Node.names['serial_communicator'].button
@@ -903,7 +924,7 @@ class MainMonitor(BaseWidget) :
 
         self._overallImage = ControlButton('overall image', checkable = True)
         self._overallImage.value = self.__showOverAll
-        img = cv2.imread(self._logo_path + 'architecture.jpg',1)
+        img = cv2.imread(self._logo_path + 'architecture.jpeg',1)
         height, width, depth = img.shape
         imgScale = 1024.0/height
         newX,newY = img.shape[1]*imgScale,img.shape[0]*imgScale
@@ -924,7 +945,7 @@ class MainMonitor(BaseWidget) :
                         ('-----------------------Topics----------------------'),
                         ('_topicOccupancyMap', '_topicLaneData', '_topicMissionState', '_topicLightState', '_topicTask','_topicImuSpeed'),
                         ('_topicRawLocalMap', '_topicMotionState', '_topicVelocityLevel', '_topicTFInformation', '_topicLocalMap', '_topicGoalPose', '_topicPath'),
-                        ('_topicIdealControl', '_topicCalibratedControl','_topicVehicleState'),
+                        ('_topicCurvature', '_topicCalibratedControl','_topicVehicleState'),
                         ('_---------------------------------------------------'),
                         ('_closeAll'),
                         ('_deactivateAll', '_activateAll'),
