@@ -10,12 +10,9 @@ class ImageMerger():
         self.lidar_map = None
 
     def set_lane_map(self, img):
-        print('lane')
         self.lane_map = ros_numpy.numpify(img)
-        print('lane1')
 
     def set_lidar_map(self, img):
-        print('lidar')
         self.lidar_map = ros_numpy.numpify(img)
 
     def merge(self):
@@ -25,20 +22,18 @@ class ImageMerger():
         return ros_numpy.msgify(Image, self.lane_map, encoding='mono8')
 
 def lane_callback(img):
-    print('lane_call')
     merger.set_lane_map(img)
 
 def lidar_callback(img):
-    print('lidar_call')
     merger.set_lidar_map(img)
 
 
 if __name__ == "__main__":
     merger = ImageMerger()
-    rospy.init_node('map_merger', anonymous=True)
-    rospy.Subscriber('/lane_map', Image, lane_callback)
-    rospy.Subscriber('lidar_map', Image, lidar_callback)
-    obstacle_map_pub = rospy.Publisher('/obstacle_map', Image, queue_size=1)
+    rospy.init_node('/map_merger', anonymous=True)
+    rospy.Subscriber('lane_data', Image, lane_callback)
+    rospy.Subscriber('occupancy_map', Image, lidar_callback)
+    obstacle_map_pub = rospy.Publisher('raw_local_map', Image, queue_size=1)
     rate = rospy.Rate(20)
     while not rospy.is_shutdown():
         if not isinstance(merger.lane_map, type(None)) and not isinstance(merger.lidar_map, type(None)):
