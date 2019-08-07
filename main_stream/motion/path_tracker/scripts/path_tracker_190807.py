@@ -15,6 +15,7 @@ from core_msgs.msg import VelocityLevel
 from core_msgs.msg import ActiveNode
 from core_msgs.msg import Curvature
 from core_msgs.msg import VehicleState
+from core_msgs.msg import MotionState
 
  
 class tracker:
@@ -41,6 +42,12 @@ class tracker:
                 self.velocity_level = VelocityLevel()
                 self.update_velocity_level = False
 
+                self.latest_motion_state = MotionState()
+                self.motion_state = MotionState()
+                self.update_motion_state = False
+                self.motion_state_buff = []
+                self.motion_state_buff_size = 200
+
                 self.curvature = Curvature()
                 self.curvature_write = 0
                 self.curvature_count = 0
@@ -61,7 +68,7 @@ class tracker:
                         print("Path_update failed.")
                         return self.EMERGENCY_BRAKE
 
-        def Path_estimate(self, initialize_time):
+        def Path_estimate(self, initialize_time):       # TODO: Consider motion_state_buff[-1], it was parking or not?
                 try:
                         passed_time = initialize_time - self.curvature_time_buff[-1]
                         
@@ -115,7 +122,7 @@ class tracker:
                         print("Set_look_ahead_point failed.")
                         return self.EMERGENCY_BRAKE
 
-        def Deicide_curvature(self, temp_control_mode):
+        def Deicide_curvature(self, temp_control_mode): # TODO: Consider current motion state -> Parking or not?
                 try:
                         if (self.look_ahead_point.pose.position.x == 0) and (self.look_ahead_point.pose.position.y == 0):
                                 self.curvature.curvature = 0
@@ -147,11 +154,16 @@ class tracker:
                 self.latest_velocity_level = data
                 self.update_velocity_level = True
 
+        def write_motion_state(self, data):
+                self.latest_motion_state = data
+                self.update_motion_state = True
+
         # Main control loop
         def main_control_loop(self):
                 '''
                 1. Initialization
                 '''
+                # Initialize curvature
                 if self.path_count <= 0:
                     self.curvature = Curvature()
                 else:
@@ -164,8 +176,17 @@ class tracker:
                         pass
                 self.update_velocity_level = False
  
+                # Initialize temp_control_mode
                 temp_control_mode = self.NO_CONTROL
 
+                # Initialize motion state
+                if self.update_motion_state = True:
+                        self.motion_state = copy.deepcopy(self.latest_motion_state)
+                else:
+                        pass
+                self.update_motion_state = False
+
+                # Initialize time
                 if self.path_count <= 0:
                     initialize_time = rospy.get_rostime().to_sec()
                 else:
@@ -201,9 +222,12 @@ class tracker:
                             self.curvature_buff[-1] = self.curvature
                             self.curvature_time_buff[0:-1] = self.curvature_time_buff[1:]
                             self.curvature_time_buff[-1] = rospy.get_rostime().to_sec()
+                            self.motion_state_buff[0:-1] = self.motion_state_buff[1:]
+                            self.motion_state_buff[-1] = self.motion_state
                     else:
                             self.curvature_buff.append(self.curvature)
                             self.curvature_time_buff = np.append(self.curvature_time_buff, rospy.get_time())
+                            self.motion_state_buff.append(self.motion_state)
                     self.curvature_count += 1
                 
                 print("One main tracking cycle is compeleted.")
@@ -238,6 +262,11 @@ def callbac_update_velocity_level(data):
         print ("got velocity level")
         return 0
 
+def callbac_update_motion_state(data):
+        main_track.write_motion_state(data)
+        print ("got motion state")
+        return 0
+
 # Define fuction for Sub and Pub
 def mainloop() :
         '''
@@ -259,6 +288,7 @@ def mainloop() :
         rospy.Subscriber('/path', Path, callbac_update_path)
         rospy.Subscriber('/vehicle_state', VehicleState, callbac_update_vehicle_state)
         rospy.Subscriber('/velocity_level', VelocityLevel, callbac_update_velocity_level)
+        rospy.Subscriber('/motion_state', MotionState, callbac_update_motion_state)
 
         curvature_pub = rospy.Publisher('/curvature', Curvature, queue_size=10)
 
