@@ -12,7 +12,7 @@ class model_estimator:
     # Initialize class variables
     def __init__(self):
 
-
+        self.temp_control_mode = 'NO_CONTROL'
 
         # Output variables
         self.control = Control()
@@ -55,9 +55,37 @@ class model_estimator:
         
       
     # Define functions
-    def Curvature2Steer(self):
+    def Set_temp_control_mode(self):
+        #TODO
+        temp_control_mode = 'NO_CONTROL'
+        return temp_control_mode
 
-        return 0
+    def Set_control_mode(self):
+        #TODO
+        control_mode = 'NO_CONTROL'
+        return control_mode
+
+    def Curvature2Steer(self):
+        #TODO
+        steer = 0.
+        return steer
+
+    def Set_gear(self):
+        #TODO
+        gear = 0
+        return gear
+
+    def Set_speed_and_brake(self):
+        #TODO
+        speed = 0.
+        brake = 0
+        return speed, brake
+
+    def Set_isauto_and_estop(self):
+        #TODO
+        is_auto = False
+        estop = False
+        return is_auto, estop
 
 
     # Define write functions
@@ -87,24 +115,83 @@ class model_estimator:
         '''
         1. Initialization
         '''
+        # Update imuspeed
+        if self.update_imuspeed == True:
+            self.imuspeed = copy.deepcopy(self.latest_imuspeed)
+        else:
+            pass
+        self.update_imuspeed = False
+
+        # Update curvature
+        if self.update_curvature == True:
+            self.curvature = copy.deepcopy(self.latest_curvature)
+        else:
+            pass
+        self.update_curvature = False
+
+        # Update vehicle state
+        if self.update_vehicle_state == True:
+            self.vehicle_state = copy.deepcopy(self.latest_vehicle_state)
+        else:
+            pass
+        self.update_vehicle_state = False
+
+        # Update velocity level
+        if self.update_motion_state == True:
+            self.motion_state = copy.deepcopy(self.latest_motion_state)
+        else:
+            pass
+        self.update_motion_state = False
+
+        # Update velocity level
+        if self.update_velocity_level == True:
+            self.velocity_level = copy.deepcopy(self.latest_velocity_level)
+        else:
+            pass
+        self.update_velocity_level = False
+
+        # Initialize control
+        self.control = Control()
 
         '''
-        2. Curvature to steer angle with compensation
+        2. Temporary control mode decision
+        '''
+        self.temp_control_mode = self.Set_temp_control_mode()
+
+        '''
+        3. Curvature to steer angle with compensation
         ''' 
+        self.control.steer = self.Curvature2Steer()
 
         '''
-        3. Set gear state by current motion state
+        4. Set gear state by current motion state
+        '''
+        self.control.gear = self.SetGear()
+
+        '''
+        5. Set proper velocity and brake level by velocity level and vehicle state
+        '''
+        self.control.speed, self.control.brake = self.Set_speed_and_brake()
+
+        '''
+        6. Finial decision of control mode
+        '''
+        self.control.control_mode = self.Set_control_mode()
+
+        '''
+        7. Final decision of auto mode and e-stop
+        '''
+        self.control.is_auto, self.control.estop = self.Set_isauto_and_estop()
+
+        '''
+        8. Post processing of control variables(Range of brake, speed, steer/ etc...)
         '''
 
         '''
-        4. Set proper velocity and brake level by velocity level and vehicle state
+        9. Save and return calibrated_control
         '''
 
-
-        '''
-        X. Save and return calibrated_control 
-        '''
-
+        return self.control
 
 
 # Declare instance of model_estimator class
