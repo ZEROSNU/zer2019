@@ -90,17 +90,21 @@ def mainloop():
 ​
 def mscb(data) :
     print ("got mission state - <"+ data.mission_state+">\n")
-    mission_state=data
+    missionstate.mission_state=data.mission_state
     return 0
     
 def lscb(data) :
     print ("got light state - <%d,[%d,%d,%d,%d]>\n " % (data.light_found, data.red, data.yellow, data.left,data.green))
-    light_state=data
+    lightstate.light_found=data.light_found
+    lightstate.red=data.red
+    lightstate.yellow=data.yellow
+    lightstate.left=data.left
+    lightstate.green=data.green
     return 0
 ​
 def tcb(data) :
     print ("got task - <"+ data.mission_state+">\n")
-    task_state=data
+    taskstate.mission_state=data.mission_state
     return 0
 ​
 ​
