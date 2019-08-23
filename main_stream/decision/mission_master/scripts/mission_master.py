@@ -79,9 +79,7 @@ def mainloop():
         elif taskstate.mission_state=="PARKING" and missionstate.mission_state=="PARKING":
             motion.motion_state="PARKING"
         else:
-            motion.motion_state="HALT"
-
-                
+            motion.motion_state="HALT"            
                 
         i = i+1
         if mainloop.active :
@@ -106,7 +104,6 @@ def tcb(data) :
     print ("got task - <"+ data.mission_state+">\n")
     taskstate.mission_state=data.mission_state
     return 0
-
 
 if __name__ == '__main__':
     try:

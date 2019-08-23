@@ -110,17 +110,23 @@ def generate_ray_casting_grid_map(r):
         # TODO: fix so that y = 200 does not occur
         #for grid in grid_list:
             #if grid.d > d:
-                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 255        # unknown area    
-        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 255  # obstacles #added min operation for handling indexerror
+                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 127        # unknown area    
+        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 127  # obstacles #added min operation for handling indexerror
         #except IndexError:
          #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
+    kernel_dil = np.ones((9, 9), np.uint8)
+    kernel_erode = np.ones((3, 3), np.uint8)
+    #erosion_image = cv2.erode(image, kernel, iterations=1)  #// make erosion image
+    pmap = cv2.dilate(pmap, kernel_dil, iterations=1)
+    pmap = cv2.erode(pmap, kernel_erode, iterations=1)
+
     return pmap
 
 precast = precasting()
 
 if __name__ == "__main__":
     
-    rospy.init_node('lidar_subscriber', anonymous=True)
-    rospy.Subscriber("/scan", LaserScan, callback)
-    lidar_map_pub = rospy.Publisher('lidar_map', Image, queue_size=1)
+    rospy.init_node('/lidar_subscriber', anonymous=True)
+    rospy.Subscriber("scan", LaserScan, callback)
+    lidar_map_pub = rospy.Publisher('occupancy_map', Image, queue_size=1)
     rospy.spin()

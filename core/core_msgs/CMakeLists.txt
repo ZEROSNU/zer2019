@@ -12,6 +12,7 @@ add_message_files( DIRECTORY msg
   FILES
   VehicleState.msg
   Control.msg
+  Curvature.msg
   MissionState.msg
   LightState.msg
   MotionState.msg
