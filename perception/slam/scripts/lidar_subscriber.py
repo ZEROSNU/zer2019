@@ -18,8 +18,10 @@ MAX_Y = 6.0
 LEN_X = int(round((MAX_X - MIN_X) / XY_RES))
 LEN_Y = int(round((MAX_Y - MIN_Y) / XY_RES))
 
+isactive = True
 
 def callback(data):
+    global isactive
     #t1 = time.time()
 
     r = list(data.ranges)
@@ -27,7 +29,8 @@ def callback(data):
 
     pmap = generate_ray_casting_grid_map(r)
     img_msg = ros_numpy.msgify(Image, pmap, encoding='mono8')
-    lidar_map_pub.publish(img_msg)
+    if isactive:
+        lidar_map_pub.publish(img_msg)
 
     # show calculation time
     #t2 = time.time()
@@ -119,8 +122,24 @@ def generate_ray_casting_grid_map(r):
 precast = precasting()
 
 if __name__ == "__main__":
-    
+    global isactive
+    '''
+    code for activate and deactivate the node
+    '''
+    isactive = True
+    def signalResponse(data) :
+        if 'zero_monitor' in data.active_nodes :
+            if nodename in data.active_nodes :
+                isactive = True
+            else :
+                isactive = False
+        else :
+            rospy.signal_shutdown('no monitor')
+    rospy.Subscriber('/active_nodes', ActiveNode, signalResponse)
+    '''
+    ...
+    '''
     rospy.init_node('lidar_subscriber', anonymous=True)
     rospy.Subscriber("/scan", LaserScan, callback)
-    lidar_map_pub = rospy.Publisher('/lidar_map', Image, queue_size=1)
+    lidar_map_pub = rospy.Publisher('/occupancy_map', Image, queue_size=1)
     rospy.spin()
