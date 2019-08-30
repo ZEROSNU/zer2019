@@ -653,7 +653,7 @@ def filter_colors(image):
         
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)#pdb.set_trace()
-    
+    CROSSWALK = False
     if len(stop_lines[0]) > 5:
         print("STOPLINE!")
     else:
