@@ -97,9 +97,18 @@ class LaneNode:
     def callback(self, data):
         img_input = self.bridge.imgmsg_to_cv2(data, 'bgr8')
         #img_output = annotate_image_array(img_input)
-        img_output = draw_line_with_color(img_input)
-        send_img_raw_map = self.bridge.cv2_to_imgmsg(img_output, "bgr8")
+        img_output,_ = draw_line_with_color(img_input)
+        img_output = img_output[:,:IMAGE_SIZE]
         
+        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
+
+        matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
+        dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
+        sat = np.ones((MAP_SIZE,MAP_SIZE))*255
+        map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
+        map_img = dst[:,:,0]/255*100 + dst[:,:,2]
+        map_img[map_img > 255] = 255
+        send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
         if self.active:
             self.pub_lane_map.publish(send_img_raw_map)
@@ -275,7 +284,6 @@ def draw_line_with_color(image_in):
                     weight_current = math.exp(rsquared_current) / exp_sum
 
                     coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
-                    print(len(right_x_candidates))
                 else:
                     coeff_right = np.array(coeff_left)
                     coeff_right[2] += LANE_WIDTH
@@ -349,7 +357,7 @@ def draw_line_with_color(image_in):
     cv2.polylines(line_img,np.int32([polypoints_right]),False,right_color,5)
 
     annotated_image = weighted_img(line_img, image_in)
-    return annotated_image
+    return line_img, annotated_image
         
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
@@ -655,8 +663,8 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    
+    main()
+    '''
     path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
@@ -669,13 +677,18 @@ if __name__ == '__main__':
         file_num += 1
         img_input = cv2.imread(full_path)
         #img_output = annotate_image_array(img_input)
-        img_output = draw_line_with_color(img_input)
+        img_output, _ = draw_line_with_color(img_input)
+        img_output = img_output[:,:IMAGE_SIZE]
+        map_img = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
+
+        matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
+        dst = cv2.warpAffine(map_img,matrix,(MAP_SIZE,MAP_SIZE))
         #img_output = filter_colors(img_input)
-        cv2.imshow("img", img_output)
+        cv2.imshow("img", dst)
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
-    
+    '''
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     
