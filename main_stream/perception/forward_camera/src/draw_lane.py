@@ -576,7 +576,7 @@ def filter_colors(image):
     Filter the image to include only yellow and white pixels
     """
     # Filter white pixels
-    white_threshold = 160
+    white_threshold = 200
     lower_white = np.array([white_threshold, white_threshold, white_threshold])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(image, lower_white, upper_white)
@@ -661,7 +661,7 @@ def main():
 
 if __name__ == '__main__':
     #main()
-    path = "/home/kimsangmin/ZERO_VISION/bird/5/"
+    path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
     total_file_num = 600
