@@ -63,16 +63,19 @@ def imagePublisher():
     #left_pub = rospy.Publisher('left_img', Image, queue_size=1)
     #front_pub = rospy.Publisher('front_img', Image, queue_size=1)
     #right_pub = rospy.Publisher('right_img', Image, queue_size=1)
-     
-    #traffic_pub = rospy.Publisher('traffic_image', Image, queue_size=1)
+    
+    traffic_pub = rospy.Publisher('/traffic_image', Image, queue_size=1)
     rospy.init_node('cam', anonymous=True)
     rate=rospy.Rate(30)#30hz
     bridge = CvBridge()
+
+    traffic_count = 0
 
     while not rospy.is_shutdown():
         _, img_front = cam_front.read() # captures image
         _, img_left = cam_left.read()
         _, img_right = cam_right.read()
+        _, img_wide = cam_wide.read()
         
         wrp_front = warp_image(img_front, H_front)
         wrp_left = warp_image(img_left, H_left)
@@ -83,9 +86,11 @@ def imagePublisher():
         left_masked = np.multiply(wrp_left, black_area).astype('uint8')
         right_masked = np.multiply(wrp_right, black_area).astype('uint8')
         
-        merged =  front_masked + left_masked + right_masked
+        merged =  front_masked + right_masked + letf_masked
 
         merged_msg = bridge.cv2_to_imgmsg(merged,'bgr8')
+        
+        traffic_msg = bridge.cv2_to_imgmsg(img_wide,'bgr8')
         '''
         if pub_mod == "warp":
             left_msg = bridge.cv2_to_imgmsg(wrp_left, 'bgr8')
@@ -96,8 +101,16 @@ def imagePublisher():
             front_msg = bridge.cv2_to_imgmsg(img_front, 'bgr8')
             right_msg = bridge.cv2_to_imgmsg(img_right, 'bgr8')
         '''
-        # PUBLISH
+        # PUBLISH merged msg as 30Hz
         lane_pub.publish(merged_msg)
+
+        # PUBLISH traffic msg as 10Hz
+        if traffic_count <= 0:
+            traffic_pub.publish(traffic_msg)
+            traffic_count = 2
+        else:
+            traffic_count -= 1
+            
         #left_pub.publish(left_msg)
         #front_msg = bridge.cv2_to_imgmsg(img_front, 'bgr8')
         #front_pub.publish(front_msg)
@@ -105,6 +118,7 @@ def imagePublisher():
 
         if Z_DEBUG:
             cv2.imshow("result", merged)
+            cv2.imshow("wide", img_wide)
             #cv2.imshow('result', front_masked)
             if cv2.waitKey(1)==27:
                 break
@@ -113,6 +127,7 @@ def imagePublisher():
     cam_front.release()
     cam_left.release()
     cam_right.release()
+    cam_wide.release()
 
 
 if __name__ == '__main__':
@@ -123,6 +138,7 @@ if __name__ == '__main__':
             cam_front = cv2.VideoCapture(1)
             cam_left = cv2.VideoCapture(2)
             cam_right = cv2.VideoCapture(3)
+            cam_wide = cv2.VideoCapture(4)
             '''
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -151,8 +167,10 @@ if __name__ == '__main__':
             _left, img_left = cam_left.read()
             _right, img_right = cam_right.read()
 
+            _wide, img_wide = cam_wide.read()
+
             #if (ret1 and ret2 and ret3):
-            if(_front and _left and _right):
+            if(_front and _right and _left and _wide):
                 print("All cameras connected!")
                 break
             else:
@@ -160,6 +178,7 @@ if __name__ == '__main__':
                 cam_front.release()
                 cam_left.release()
                 cam_right.release()
+                cam_wide.release()
     
         imagePublisher()
     except rospy.ROSInterruptException:

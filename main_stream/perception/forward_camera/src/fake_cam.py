@@ -26,8 +26,8 @@ class FakeCam:
             rospy.signal_shutdown('no monitor')
     '''
     def send_image(self):
-        rate = rospy.Rate(1)
-        path = rospy.get_param('/data_path')
+        rate = rospy.Rate(20)
+        path = rospy.get_param('/data_path/bird/')
         #path = '/home/kimsangmin/ZERO_VISION/bird/3/'
         ext = '.jpg'
         num_of_files = 600
