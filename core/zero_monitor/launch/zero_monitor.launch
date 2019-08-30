@@ -23,7 +23,7 @@
   </group>
   
   <group ns = "forward_camera">
-    <node name = "fake_cam" pkg = "forward_camera" type = "fake_cam.py"/>
+    <node name = "cam" pkg = "forward_camera" type = "cam.py"/>
     <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py"/>
   </group>
 
