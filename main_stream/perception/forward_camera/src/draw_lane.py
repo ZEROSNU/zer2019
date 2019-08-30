@@ -9,6 +9,7 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from vision_utils import *
 from core_msgs.msg import ActiveNode
+from core_msgs.msg import CenterLine
 from matplotlib import pyplot as plt
 import pdb
 from time import sleep # for debug 
@@ -38,7 +39,7 @@ CANDIDATE_THRES = 4000
 
 # pixel Thresholds
 CENTER_LINE_THRES = 15000
-CROSSWALK_THRES = 150
+CROSSWALK_THRES = 120
 STOP_LINE_THRES = 300
 
 # Loose lane ROI offset when first search
@@ -76,14 +77,16 @@ max_line_gap = 10    # maximum gap in pixels between connectable line segments
 
 class LaneNode:
 
-
     def __init__(self):
         self.node_name = 'forward_camera'
         self.pub_lane_map = rospy.Publisher('/lane_data', Image, queue_size=1)
+        self.pub_center_line = rospy.Publisher('/is_center', CenterLine, queue_size=1)
         self.sub_active_nodes = rospy.Subscriber('/active_nodes', ActiveNode, self.signalResponse)
         self.sub_raw_img = rospy.Subscriber('/forward_camera/raw_img', Image, self.callback)
         self.active = True
         self.bridge = CvBridge()
+        self.cl = CenterLine()
+        self.seq = 0
 
     def signalResponse(self, data):
         if 'zero_monitor' in data.active_nodes:
@@ -97,7 +100,7 @@ class LaneNode:
     def callback(self, data):
         img_input = self.bridge.imgmsg_to_cv2(data, 'bgr8')
         #img_output = annotate_image_array(img_input)
-        img_output,_ = draw_line_with_color(img_input)
+        img_output,_,is_center_left,is_center_right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
         
         resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
@@ -106,12 +109,23 @@ class LaneNode:
         dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
         sat = np.ones((MAP_SIZE,MAP_SIZE))*255
         map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
-        map_img = dst[:,:,0]/255*100 + dst[:,:,2]
+        map_img = dst[:,:,0]
         map_img[map_img > 255] = 255
         send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
+        
+        self.cl.is_center_left = is_center_left
+        self.cl.is_center_right = is_center_right
+
         if self.active:
+            self.cl.header.stamp = rospy.Time.now()
+            self.cl.header.seq = self.seq
+            self.seq += 1
+            self.cl.header.frame_id = 'center_line'
+        
+        
             self.pub_lane_map.publish(send_img_raw_map)
+            self.pub_center_line.publish(self.cl)
 
         if Z_DEBUG:
             cv2.imshow('color_image',img_input)
@@ -136,17 +150,19 @@ def gaussian_blur(img, kernel_size):
 def draw_line_with_color(image_in):
     global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH
     
-    blue = [255,0,0]
-    green = [0,255,0]
-    red = [0,0,255]
+    lane_color = [100,0,0]
+    stop_line_color = [200,0,0]
     
-    left_color = blue
-    right_color = blue
+    left_color = lane_color
+    right_color = lane_color
+
+    is_center_left = False
+    is_center_right = False
 
     line_img = np.zeros((image_in.shape[0], image_in.shape[1], 3), dtype=np.uint8)  # 3-channel BGR image
     
 
-    image = filter_colors(image_in)
+    image, stop_lines = filter_colors(image_in)
     
     points = np.where(image>0)
 
@@ -172,6 +188,7 @@ def draw_line_with_color(image_in):
         print("ENTER CROSSWALK!")
         ROBUST_SEARCH = True
         NO_LANE_COUNT += 1
+        '''
         if NO_LANE_COUNT < 5:
             if len(left_coeff_buffer) < 3:
                 coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
@@ -183,6 +200,10 @@ def draw_line_with_color(image_in):
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
             coeff_right[2] += LANE_WIDTH
+        '''
+        coeff_left = np.array([10e-10,0,-100])
+        coeff_right = np.array([10e-10,0,IMAGE_SIZE+100])
+        
     else:
         if len(left_coeff_buffer) < 3:
             last_left_coeff = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
@@ -326,11 +347,10 @@ def draw_line_with_color(image_in):
                     coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
                     coeff_right = np.array(coeff_left)
                     coeff_right[2] += LANE_WIDTH
-            
-            if(len(left_x_candidates) > CENTER_LINE_THRES):
-                left_color = red
-            if(len(right_x_candidates) > CENTER_LINE_THRES):
-                right_color = red
+            if len(left_x_candidates) > CENTER_LINE_THRES:
+                is_center_left = True
+            if len(right_x_candidates) > CENTER_LINE_THRES:
+                is_center_right = True
 
             # Updating buffer            
             left_coeff_buffer[:2] = left_coeff_buffer[1:]
@@ -339,10 +359,11 @@ def draw_line_with_color(image_in):
             right_coeff_buffer[2] = coeff_right
 
             ROBUST_SEARCH = False
-
+            
     # Draw the lines on image
     polypoints_left = np.zeros((IMAGE_SIZE,2))
     polypoints_right = np.zeros((IMAGE_SIZE,2))
+    polypoints_stop = np.zeros((IMAGE_SIZE,2))
 
     t = np.arange(0,IMAGE_SIZE,1)
     f = np.poly1d(coeff_left)
@@ -356,8 +377,14 @@ def draw_line_with_color(image_in):
 
     cv2.polylines(line_img,np.int32([polypoints_right]),False,right_color,5)
 
+    if len(stop_lines) > 5:
+        polypoints_stop[:,1] = t
+        polypoints_stop[:,0] = stop_lines[0]
+    
+        cv2.polylines(line_img,np.int32([polypoints_stop]),False,stop_line_color,5)
+
     annotated_image = weighted_img(line_img, image_in)
-    return line_img, annotated_image
+    return line_img, annotated_image, is_center_left, is_center_right
         
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
@@ -608,12 +635,39 @@ def filter_colors(image):
 
     # Combine the two above images
     image2 = cv2.addWeighted(white_image, 1., hsv_image, 1., 0.)
-    if (sum(white_mask[:,450]>0) > CROSSWALK_THRES and sum(white_mask[:,450]>0) < STOP_LINE_THRES) or (sum(white_mask[:,150]>0)> CROSSWALK_THRES and sum(white_mask[:,150]>0) < STOP_LINE_THRES):
-        CROSSWALK = True
+    
+    if len (left_coeff_buffer) == 3:
+        left_y = int(left_coeff_buffer[2][2])
+        right_y = int(right_coeff_buffer[2][2])
+        
+        white_vals = sum(white_mask[left_y:right_y,:]>0)
+        
+        crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
+        stop_lines = np.where(white_vals >= STOP_LINE_THRES)
+    
     else:
-        CROSSWALK = False
+        left_y = int(IMAGE_SIZE/2 - LANE_WIDTH/2)
+        right_y = int(IMAGE_SIZE/2 + LANE_WIDTH/2)
 
-    return image2
+        white_vals = sum(white_mask[left_y:right_y,:]>0)
+        
+        crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
+        stop_lines = np.where(white_vals >= STOP_LINE_THRES)#pdb.set_trace()
+    CROSSWALK = False
+    if len(stop_lines[0]) > 5:
+        print("STOPLINE!")
+    else:
+        if len(crosswalk_lines[0]) > 5:
+            CROSSWALK = True
+        else:
+            CROSSWALK = False
+    
+    cv2.imshow('color_filtered', image2)
+    image2[:,stop_lines[0]] = [0,0,0]
+    image2[:,crosswalk_lines[0]] = [0,0,0]
+    cv2.imshow('after',image2)
+
+    return image2, stop_lines[0]
 
 def annotate_image_array(image_in):
     """ Given an image Numpy array, return the annotated image as a Numpy array """
@@ -663,8 +717,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    '''
+    #main()
+    
     path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
@@ -677,18 +731,18 @@ if __name__ == '__main__':
         file_num += 1
         img_input = cv2.imread(full_path)
         #img_output = annotate_image_array(img_input)
-        img_output, _ = draw_line_with_color(img_input)
+        img_output, annotate_image, left, right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
         map_img = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
 
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
         dst = cv2.warpAffine(map_img,matrix,(MAP_SIZE,MAP_SIZE))
         #img_output = filter_colors(img_input)
-        cv2.imshow("img", dst)
+        cv2.imshow("img", annotate_image)
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
-    '''
+    
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     

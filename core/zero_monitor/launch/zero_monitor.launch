@@ -19,9 +19,12 @@
 
   <group ns = "lidar">
     <node name = "lidar_subscriber" pkg = "lidar" type = "lidar_subscriber.py"/>
-    <node name = "merge_vision" pkg = "lidar" type = "merge_vision.py"/>
   </group>
-  
+
+  <group ns = "raw_local_map">
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py"/>
+  </group>
+
   <group ns = "forward_camera">
     <node name = "cam" pkg = "forward_camera" type = "cam.py"/>
     <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py"/>
