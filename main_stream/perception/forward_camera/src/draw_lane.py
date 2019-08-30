@@ -123,7 +123,7 @@ def gaussian_blur(img, kernel_size):
     return cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
 
 def draw_line_with_color(image_in):
-    global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH, debug
+    global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH
     
     blue = [255,0,0]
     green = [0,255,0]
@@ -346,15 +346,12 @@ def draw_line_with_color(image_in):
 
     cv2.polylines(line_img,np.int32([polypoints_right]),False,right_color,5)
 
-    if debug:
-        pdb.set_trace()
-
     annotated_image = weighted_img(line_img, image_in)
     return annotated_image
         
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
-    global NO_LANE_COUNT, debug, CROSSWALK
+    global NO_LANE_COUNT, CROSSWALK
 
     left_color = color
     right_color = color
@@ -526,9 +523,6 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
 
         cv2.polylines(img,np.int32([polypoints_right]),False,right_color,5)
 
-        if debug:
-            pdb.set_trace()
-        
         if stop_lines:
             cv2.polylines(img,np.int32([polypoints_stop]),False,[0,0,255],5)
         
@@ -571,7 +565,7 @@ def weighted_img(img, initial_img, a=0.8, b=1., c=0.):
     return cv2.addWeighted(initial_img, a, img, b, c)
 
 def filter_colors(image):
-    global debug, CROSSWALK
+    global CROSSWALK
     """
     Filter the image to include only yellow and white pixels
     """
@@ -660,12 +654,12 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
+    main()
+    '''
     path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
     total_file_num = 600
-    debug = False
 
     while True:
         full_path = path + str(file_num) + postfix
@@ -678,10 +672,9 @@ if __name__ == '__main__':
         #img_output = filter_colors(img_input)
         cv2.imshow("img", img_output)
         key = cv2.waitKey(10)
-        if key == ord('p'):
-            debug = not debug
         if key == ord('q'):
             break
+    '''
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     
