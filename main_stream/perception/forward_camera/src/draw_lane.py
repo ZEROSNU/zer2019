@@ -36,8 +36,10 @@ LANE_ROI_RIGHT = (-20,40)
 # Minimum pixel num for draw line
 CANDIDATE_THRES = 4000
 
-# Minimum pixel for determining whether the line is center line or not
-CENTER_LINE_THRES = 10000
+# pixel Thresholds
+CENTER_LINE_THRES = 15000
+CROSSWALK_THRES = 150
+STOP_LINE_THRES = 300
 
 # Loose lane ROI offset when first search
 ROBUST_SEARCH = True
@@ -76,7 +78,7 @@ class LaneNode:
 
 
     def __init__(self):
-        self.node_name = 'draw_lane'
+        self.node_name = 'forward_camera'
         self.pub_lane_map = rospy.Publisher('/lane_data', Image, queue_size=1)
         self.sub_active_nodes = rospy.Subscriber('/active_nodes', ActiveNode, self.signalResponse)
         self.sub_raw_img = rospy.Subscriber('/forward_camera/raw_img', Image, self.callback)
@@ -598,8 +600,7 @@ def filter_colors(image):
 
     # Combine the two above images
     image2 = cv2.addWeighted(white_image, 1., hsv_image, 1., 0.)
-    
-    if (sum(white_mask[:,450])/255 > 200 and sum(white_mask[:,450])/255 < 300) or (sum(white_mask[:,150])/255 > 200 and sum(white_mask[:,150])/255 < 300):
+    if (sum(white_mask[:,450]>0) > CROSSWALK_THRES and sum(white_mask[:,450]>0) < STOP_LINE_THRES) or (sum(white_mask[:,150]>0)> CROSSWALK_THRES and sum(white_mask[:,150]>0) < STOP_LINE_THRES):
         CROSSWALK = True
     else:
         CROSSWALK = False
@@ -644,7 +645,7 @@ def fill_lines(line_x, line_y, x1, x2, y1, y2):
 
 
 def main():
-    rospy.init_node('draw_lane', anonymous=True)
+    rospy.init_node('forward_camera', anonymous=True)
     ln = LaneNode()
 
     try:
@@ -654,8 +655,8 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
-    '''
+    #main()
+    
     path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
@@ -674,7 +675,7 @@ if __name__ == '__main__':
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
-    '''
+    
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     
