@@ -111,8 +111,8 @@ def imagePublisher():
     cv2.destroyAllWindows()
 
     cam_front.release()
-    #cam_left.release()
-    #cam_right.release()
+    cam_left.release()
+    cam_right.release()
 
 
 if __name__ == '__main__':
