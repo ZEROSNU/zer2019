@@ -100,12 +100,15 @@ class LaneNode:
         img_output,_ = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
         
-        map_img = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
 
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
-        dst = cv2.warpAffine(map_img,matrix,(MAP_SIZE,MAP_SIZE))
-        
-        send_img_raw_map = self.bridge.cv2_to_imgmsg(dst, "bgr8")
+        dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
+        sat = np.ones((MAP_SIZE,MAP_SIZE))*255
+        map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
+        map_img = dst[:,:,0]/255*100 + dst[:,:,2]
+        map_img[map_img > 255] = 255
+        send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
         if self.active:
             self.pub_lane_map.publish(send_img_raw_map)

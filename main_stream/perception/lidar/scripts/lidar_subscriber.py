@@ -5,9 +5,9 @@ import ros_numpy
 import time
 import math
 import numpy as np
-
+from core_msgs.msg import ActiveNode
 from sensor_msgs.msg import LaserScan, Image
-
+import cv2
 DEBUG = False
 XY_RES = 0.03  # x-y grid resolution [m]
 YAW_RES = 0.00872664619237  # yaw angle resolution [rad] = 0.05 degree
@@ -18,8 +18,10 @@ MAX_Y = 6.0
 LEN_X = int(round((MAX_X - MIN_X) / XY_RES))
 LEN_Y = int(round((MAX_Y - MIN_Y) / XY_RES))
 
+isactive = True
 
 def callback(data):
+    global isactive
     #t1 = time.time()
 
     r = list(data.ranges)
@@ -27,7 +29,8 @@ def callback(data):
 
     pmap = generate_ray_casting_grid_map(r)
     img_msg = ros_numpy.msgify(Image, pmap, encoding='mono8')
-    lidar_map_pub.publish(img_msg)
+    if isactive:
+        lidar_map_pub.publish(img_msg)
 
     # show calculation time
     #t2 = time.time()
@@ -105,28 +108,42 @@ def generate_ray_casting_grid_map(r):
         angle_id = int(math.floor(angle / YAW_RES))
         grid_list = precast[angle_id]
 
-        ix = int(round((x - MIN_X) / XY_RES))
+        ix = int(round((x - MIN_X) / XY_RES))   
         iy = int(round((y - MIN_Y) / XY_RES))
         # TODO: fix so that y = 200 does not occur
         #for grid in grid_list:
             #if grid.d > d:
-                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 127        # unknown area    
-        pmap[min(int(LEN_Y - iy), 199)][min(int(ix), 199)] = 127  # obstacles #added min operation for handling indexerror
+                #pmap[min(int(LEN_Y - grid.iy), 199)][min(int(grid.ix), 199)] = 255        # unknown area    
+        pmap[min(int(LEN_Y - iy), LEN_Y - 1)][min(int(ix), LEN_X - 1)] = 127  # obstacles #added min operation for handling indexerror
         #except IndexError:
          #   rospy.loginfo("Error with (ix, iy) = (%s, %s)" % (ix, iy))
-    kernel_dil = np.ones((9, 9), np.uint8)
-    kernel_erode = np.ones((3, 3), np.uint8)
-    #erosion_image = cv2.erode(image, kernel, iterations=1)  #// make erosion image
-    pmap = cv2.dilate(pmap, kernel_dil, iterations=1)
-    pmap = cv2.erode(pmap, kernel_erode, iterations=1)
-
+        #kernel_dil = np.ones((2, 2), np.uint8)
+        #kernel_erode = np.ones((3, 3), np.uint8)
+        #pmap = cv2.dilate(pmap, kernel_dil, iterations=1)
+        #pmap = cv2.erode(pmap, kernel_erode, iterations=1)
     return pmap
 
 precast = precasting()
 
 if __name__ == "__main__":
-    
-    rospy.init_node('/lidar_subscriber', anonymous=True)
-    rospy.Subscriber("scan", LaserScan, callback)
-    lidar_map_pub = rospy.Publisher('occupancy_map', Image, queue_size=1)
+    global isactive
+    '''
+    code for activate and deactivate the node
+    '''
+    isactive = True
+    def signalResponse(data) :
+        if 'zero_monitor' in data.active_nodes :
+            if nodename in data.active_nodes :
+                isactive = True
+            else :
+                isactive = False
+        else :
+            rospy.signal_shutdown('no monitor')
+    rospy.Subscriber('/active_nodes', ActiveNode, signalResponse)
+    '''
+    ...
+    '''
+    rospy.init_node('lidar_subscriber', anonymous=True)
+    rospy.Subscriber("/scan", LaserScan, callback)
+    lidar_map_pub = rospy.Publisher('/occupancy_map', Image, queue_size=1)
     rospy.spin()
