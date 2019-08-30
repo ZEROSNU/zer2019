@@ -24,11 +24,7 @@
   
   <group ns = "forward_camera">
     <node name = "fake_cam" pkg = "forward_camera" type = "fake_cam.py"/>
-  </group>
-
-
-  <group ns = "raw_local_map">
-    <node name = "draw_lane" pkg = "forward_camera" type = "draw_lane.py"/>
+    <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py"/>
   </group>
 
   <group ns = "gps">
