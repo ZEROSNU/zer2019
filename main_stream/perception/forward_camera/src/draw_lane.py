@@ -107,7 +107,6 @@ class LaneNode:
 
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
         dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
-        sat = np.ones((MAP_SIZE,MAP_SIZE))*255
         map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
         map_img = dst[:,:,0]
         map_img[map_img > 255] = 255
@@ -717,8 +716,8 @@ def main():
 
 
 if __name__ == '__main__':
-    #main()
-    
+    main()
+    '''
     path = "/home/kimsangmin/ZERO_VISION/bird/3/"
     file_num = 0
     postfix = ".jpg"
@@ -742,7 +741,7 @@ if __name__ == '__main__':
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
-    
+    '''
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     
