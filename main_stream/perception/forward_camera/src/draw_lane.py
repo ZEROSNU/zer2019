@@ -38,7 +38,7 @@ LANE_ROI_RIGHT = (-20,40)
 CANDIDATE_THRES = 4000
 
 # pixel Thresholds
-CENTER_LINE_THRES = 15000
+CENTER_LINE_THRES = 20000
 CROSSWALK_THRES = 120
 STOP_LINE_THRES = 300
 
@@ -164,7 +164,6 @@ def draw_line_with_color(image_in):
     image, stop_lines = filter_colors(image_in)
     
     points = np.where(image>0)
-
     x_vals = points[1]
     y_vals = points[0]
 
@@ -346,9 +345,9 @@ def draw_line_with_color(image_in):
                     coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
                     coeff_right = np.array(coeff_left)
                     coeff_right[2] += LANE_WIDTH
-            if len(left_x_candidates) > CENTER_LINE_THRES:
+            if (len(left_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[left_y_candidates,left_x_candidates]) > 200) > 1000:
                 is_center_left = True
-            if len(right_x_candidates) > CENTER_LINE_THRES:
+            if (len(right_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[right_y_candidates,right_x_candidates])> 200) > 1000:
                 is_center_right = True
 
             # Updating buffer            
@@ -633,7 +632,7 @@ def filter_colors(image):
     hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
     # Combine the two above images
-    image2 = cv2.addWeighted(white_image, 1., hsv_image, 1., 0.)
+    image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
     
     if len (left_coeff_buffer) == 3:
         left_y = int(left_coeff_buffer[2][2])
@@ -738,6 +737,7 @@ if __name__ == '__main__':
         dst = cv2.warpAffine(map_img,matrix,(MAP_SIZE,MAP_SIZE))
         #img_output = filter_colors(img_input)
         cv2.imshow("img", annotate_image)
+        print((left,right))
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
