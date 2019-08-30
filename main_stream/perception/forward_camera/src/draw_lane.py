@@ -8,12 +8,18 @@ from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 from vision_utils import *
+from core_msgs.msg import ActiveNode
+from matplotlib import pyplot as plt
+import pdb
+from time import sleep # for debug 
 
-bridge = CvBridge()
 
 # Define Lane Coefficients Buffer
-global coeff_buffer
-coeff_buffer = []
+global left_coeff_buffer
+left_coeff_buffer = []
+
+global right_coeff_buffer
+right_coeff_buffer = []
 
 '''
 ------------------------------------------------------------------------
@@ -21,14 +27,27 @@ BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
 # Maximum offset pixels from previous lane polynomial
-LANE_ROI_OFFSET = 100
+LANE_ROI_OFFSET = (-50,50)
+
+# Maximum offset pixels from previous lane polynomial (consider turning direction)
+LANE_ROI_LEFT = (-40,20) # respectively, lower bound and upper bound
+LANE_ROI_RIGHT = (-20,40)
+
+# Minimum pixel num for draw line
+CANDIDATE_THRES = 4000
+
+# Minimum pixel for determining whether the line is center line or not
+CENTER_LINE_THRES = 10000
+
+# Loose lane ROI offset when first search
+ROBUST_SEARCH = True
 
 # IMAGE & MAP SIZE (2019 Competition MAP SIZE : 200x200, 1px:3cm)
 IMAGE_SIZE = 600
 MAP_SIZE = 200
 
 # LANE_WIDTH
-LANE_WIDTH = 280
+LANE_WIDTH = 340
 
 # NO LANE DETECTED(COUNT UP EVERY FRAME)
 NO_LANE_COUNT = 0
@@ -36,184 +55,636 @@ NO_LANE_COUNT = 0
 # Debug Mode
 Z_DEBUG = False
 
-def callback(data):
+# Global parameters
 
-    img_input = bridge.imgmsg_to_cv2(data, 'bgr8')
+# Gaussian smoothing
+kernel_size = 3
 
-    '''
-    ------------------------------------------------------------------------
-    IMAGE PROCESSING
-    ------------------------------------------------------------------------
-    '''
-    # Blurring, Converts BGR -> HSV color space
-    img = cv2.GaussianBlur(img_input, (5,5),0)
-    hsv_img = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+# Canny Edge Detector
+low_threshold = 50
+high_threshold = 150
 
-    # Masking color
-    yellow_mask = findColor(hsv_img, lower_yellow, upper_yellow)
-    green_mask = findColor(hsv_img, lower_green, upper_green)
+# Hough Transform
+rho = 2 # distance resolution in pixels of the Hough grid
+theta = 1 * np.pi/180 # angular resolution in radians of the Hough grid
+threshold = 15     # minimum number of votes (intersections in Hough grid cell)
+min_line_length = 10 #minimum number of pixels making up a line
+max_line_gap = 10    # maximum gap in pixels between connectable line segments
 
-    # Eliminating small unnecessary dots (morphologyEx)
-    kernel = np.ones((5,5), np.uint8)
-    yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
-    green_mask = cv2.morphologyEx(green_mask, cv2.MORPH_OPEN, kernel)
-    
-    mask = green_mask
-    #mask = green_mask
-    points_mask = np.where(mask>0)
 
-    x_vals = points_mask[1]
-    y_vals = points_mask[0]
+class LaneNode:
 
-    '''
-    ------------------------------------------------------------------------
-    GETTING LANE DATA (LINE FITTING - 2ND ORDER POLYNOMIAL COEFFICIENTS)
-    ------------------------------------------------------------------------
-    '''
 
-    global NO_LANE_COUNT
-    if(np.size(x_vals) == 0):
-        #IF NO LANE DETECTED
-        print("NO LANE!")
-        NO_LANE_COUNT = NO_LANE_COUNT + 1
-        if(NO_LANE_COUNT < 5):
-            if(len(coeff_buffer)<3):
-                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE*0.5 + LANE_WIDTH*0.5 )]) 
+    def __init__(self):
+        self.node_name = 'draw_lane'
+        self.pub_lane_map = rospy.Publisher('/lane_data', Image, queue_size=1)
+        self.sub_active_nodes = rospy.Subscriber('/active_nodes', ActiveNode, self.signalResponse)
+        self.sub_raw_img = rospy.Subscriber('/forward_camera/raw_img', Image, self.callback)
+        self.active = True
+        self.bridge = CvBridge()
+
+    def signalResponse(self, data):
+        if 'zero_monitor' in data.active_nodes:
+            if self.node_name in data.active_nodes:
+                self.active = True
             else:
-                coeff_left = coeff_buffer[2]
+                self.active = False
         else:
-            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE*0.5 + LANE_WIDTH*0.5 )])
+            rospy.signal_shutdown('no monitor')
+    
+    def callback(self, data):
+        img_input = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        #img_output = annotate_image_array(img_input)
+        img_output = draw_line_with_color(img_input)
+        send_img_raw_map = self.bridge.cv2_to_imgmsg(img_output, "bgr8")
+        
+        
+        if self.active:
+            self.pub_lane_map.publish(send_img_raw_map)
 
+        if Z_DEBUG:
+            cv2.imshow('color_image',img_input)
+            cv2.waitKey(1)
+
+
+def grayscale(img):
+    """Applies the Grayscale transform
+    This will return an image with only one color channel
+    but NOTE: to see the returned image as grayscale
+    you should call plt.imshow(gray, cmap='gray')"""
+    return cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    
+def canny(img, low_threshold, high_threshold):
+    """Applies the Canny transform"""
+    return cv2.Canny(img, low_threshold, high_threshold)
+
+def gaussian_blur(img, kernel_size):
+    """Applies a Gaussian Noise kernel"""
+    return cv2.GaussianBlur(img, (kernel_size, kernel_size), 0)
+
+def draw_line_with_color(image_in):
+    global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH, debug
+    
+    blue = [255,0,0]
+    green = [0,255,0]
+    red = [0,0,255]
+    
+    left_color = blue
+    right_color = blue
+
+    line_img = np.zeros((image_in.shape[0], image_in.shape[1], 3), dtype=np.uint8)  # 3-channel BGR image
+    
+
+    image = filter_colors(image_in)
+    
+    points = np.where(image>0)
+
+    x_vals = points[1]
+    y_vals = points[0]
+
+    if len(x_vals) == 0:
+        print("No line detected")
+        ROBUST_SEARCH = True
+        NO_LANE_COUNT += 1
+        if NO_LANE_COUNT < 5:
+            if len(left_coeff_buffer) < 3:
+                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            else:
+                coeff_left = left_coeff_buffer[2]
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+        else:
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+    elif CROSSWALK:
+        print("ENTER CROSSWALK!")
+        ROBUST_SEARCH = True
+        NO_LANE_COUNT += 1
+        if NO_LANE_COUNT < 5:
+            if len(left_coeff_buffer) < 3:
+                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            else:
+                coeff_left = left_coeff_buffer[2]
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+        else:
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
     else:
-        #IF LANE DETECTED
-        NO_LANE_COUNT = 0
+        if len(left_coeff_buffer) < 3:
+            last_left_coeff = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            last_left_f = np.poly1d(last_left_coeff)
+            last_right_coeff = np.array(last_left_coeff)
+            last_right_coeff[2] += LANE_WIDTH
+            last_right_f = np.poly1d(last_right_coeff)
+            if ROBUST_SEARCH:
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+            else:
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
+                
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_RIGHT[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_RIGHT[1])]
+            if len(left_x_candidates) > CANDIDATE_THRES:
+                
+                NO_LANE_COUNT = 0
 
-        if(len(coeff_buffer)<3):
-            # Previous coefficient data is not sufficient (less than 3)
-            coeff = np.polyfit(x_vals, y_vals,2)
-            coeff_buffer.append(coeff)
-            coeff_left = coeff
+                coeff_left = np.polyfit(left_x_candidates,left_y_candidates,2)
+                if len(right_x_candidates) > CANDIDATE_THRES:
+                    coeff_right = np.polyfit(right_x_candidates,right_y_candidates,2)
+                else:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+            elif len(right_x_candidates) > CANDIDATE_THRES:
+                
+                NO_LANE_COUNT = 0
 
+                coeff_right = np.polyfit(right_x_candidates,right_y_candidates,2)
+                coeff_left = np.array(coeff_right)
+                coeff_left[2] -= LANE_WIDTH
+            else:
+                print("NO LANE!!")
+                coeff_left = last_left_coeff
+                coeff_right = last_right_coeff
+
+            left_coeff_buffer.append(coeff_left)
+            right_coeff_buffer.append(coeff_right)
+        
         else:
-            # Previous coefficient data is sufficient (more than 3)
+            last_left_coeff = left_coeff_buffer[2]
+            last_right_coeff = right_coeff_buffer[2]
+            last_left_f = np.poly1d(last_left_coeff)
+            last_right_f = np.poly1d(last_right_coeff)
 
-            # Calculate coefficients using ROI ###START
-            last_coeff = coeff_buffer[2]
-            last_f = np.poly1d(last_coeff)
-
-            # Target points inner ROI (Comparing with previous lane data)
-            y_vals_roi = y_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
-            x_vals_roi = x_vals[abs(y_vals - last_f(x_vals))<LANE_ROI_OFFSET]
+            if ROBUST_SEARCH:
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+            else:
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
+                
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_RIGHT[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_RIGHT[1])]
             
+            if len(left_x_candidates) > CANDIDATE_THRES:
+                
+                NO_LANE_COUNT = 0
 
-            coeff = np.polyfit(x_vals_roi, y_vals_roi,2)
-            x_vals = x_vals_roi
-            y_vals = y_vals_roi
+                coeff_left = np.polyfit(left_x_candidates,left_y_candidates,2)
+                
+                left_prev_f1 = np.poly1d(left_coeff_buffer[1])
+                left_prev_f2 = np.poly1d(left_coeff_buffer[2])
+                left_current_f = np.poly1d(coeff_left)
 
-            # Using buffers for filtering
-            # 1. Calculate rsquared for last 3 coefficients each
-            # 2. Calculate weights of each coefficients using rsquared & softmax function
-            prev_f1 = np.poly1d(coeff_buffer[1])
-            prev_f2 = np.poly1d(coeff_buffer[2])
-            current_f = np.poly1d(coeff)
+                rsquared_prev1 = calculate_rsquared(x_vals, y_vals, left_prev_f1)
+                rsquared_prev2 = calculate_rsquared(x_vals, y_vals, left_prev_f2)
+                rsquared_current = calculate_rsquared(x_vals, y_vals, left_current_f)
 
-            rsquared_prev1 = calculate_rsquared(x_vals, y_vals, prev_f1)
-            rsquared_prev2 = calculate_rsquared(x_vals, y_vals, prev_f2)
-            rsquared_current = calculate_rsquared(x_vals, y_vals, current_f)
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                weight_prev1 = math.exp(rsquared_prev1) / exp_sum
+                weight_prev2 = math.exp(rsquared_prev2) / exp_sum
+                weight_current = math.exp(rsquared_current) / exp_sum
 
-            exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
-            weight_prev1 = math.exp(rsquared_prev1) / exp_sum
-            weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-            weight_current = math.exp(rsquared_current) / exp_sum
+                coeff_left = weight_prev1 * left_coeff_buffer[1] + weight_prev2 * left_coeff_buffer[2] + weight_current * coeff_left
+                if len(right_x_candidates) > CANDIDATE_THRES:
+                
+                    coeff_right = np.polyfit(right_x_candidates,right_y_candidates,2)
 
-            coeff_left = weight_prev1 * coeff_buffer[1] + weight_prev2 * coeff_buffer[2] + weight_current * coeff
+                    right_prev_f1 = np.poly1d(right_coeff_buffer[1])
+                    right_prev_f2 = np.poly1d(right_coeff_buffer[2])
+                    right_current_f = np.poly1d(coeff_right)
 
-            # Updating buffer
-            coeff_buffer[0:-1] = coeff_buffer[1:3]
-            coeff_buffer[2] = coeff_left
+                    rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
+                    rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
+                    rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
 
+                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                    weight_prev1 = math.exp(rsquared_prev1) / exp_sum
+                    weight_prev2 = math.exp(rsquared_prev2) / exp_sum
+                    weight_current = math.exp(rsquared_current) / exp_sum
+
+                    coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
+                    print(len(right_x_candidates))
+                else:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+            
+            elif len(right_x_candidates) > CANDIDATE_THRES:
+                
+                NO_LANE_COUNT = 0
+
+                coeff_right = np.polyfit(right_x_candidates,right_y_candidates,2)
+
+                right_prev_f1 = np.poly1d(right_coeff_buffer[1])
+                right_prev_f2 = np.poly1d(right_coeff_buffer[2])
+                right_current_f = np.poly1d(coeff_right)
+
+                rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
+                rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
+                rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
+
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                weight_prev1 = math.exp(rsquared_prev1) / exp_sum
+                weight_prev2 = math.exp(rsquared_prev2) / exp_sum
+                weight_current = math.exp(rsquared_current) / exp_sum
+
+                coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
+
+                coeff_left = np.array(coeff_right)
+                coeff_left[2] -= LANE_WIDTH
+            
+            else:
+                print("NO LANE!")
+                NO_LANE_COUNT += 1
+                if NO_LANE_COUNT < 5:
+                    if len(left_coeff_buffer) < 3:
+                        coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+                    else:
+                        coeff_left = left_coeff_buffer[2]
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+                else:
+                    coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+            
+            if(len(left_x_candidates) > CENTER_LINE_THRES):
+                left_color = red
+            if(len(right_x_candidates) > CENTER_LINE_THRES):
+                right_color = red
+
+            # Updating buffer            
+            left_coeff_buffer[:2] = left_coeff_buffer[1:]
+            left_coeff_buffer[2] = coeff_left
+            right_coeff_buffer[:2] = right_coeff_buffer[1:]
+            right_coeff_buffer[2] = coeff_right
+
+            ROBUST_SEARCH = False
+
+    # Draw the lines on image
+    polypoints_left = np.zeros((IMAGE_SIZE,2))
+    polypoints_right = np.zeros((IMAGE_SIZE,2))
 
     t = np.arange(0,IMAGE_SIZE,1)
     f = np.poly1d(coeff_left)
+    polypoints_left[:,0] = t
+    polypoints_left[:,1] = f(t)
+    cv2.polylines(line_img,np.int32([polypoints_left]),False,left_color,5)
 
-    polypoints = np.zeros((IMAGE_SIZE,2))
-    polypoints_left = np.zeros((IMAGE_SIZE,2))
-    polypoints_left_ = np.zeros((IMAGE_SIZE,2))
-    polypoints[:,0] = t
-    polypoints[:,1] = f(t)
+    f = np.poly1d(coeff_right)
+    polypoints_right[:,0] = t
+    polypoints_right[:,1] = f(t)
 
-    '''
-    ------------------------------------------------------------------------
-    DRAW RIGHT LANE
-    ------------------------------------------------------------------------
-    '''
+    cv2.polylines(line_img,np.int32([polypoints_right]),False,right_color,5)
 
-    polypoints_left_[:,0] = t
-    polypoints_left_[:,1] = f(t) - LANE_WIDTH
+    if debug:
+        pdb.set_trace()
 
-    coeff_right = np.copy(coeff_left)
-    coeff_right[2] = coeff_right[2] - LANE_WIDTH
+    annotated_image = weighted_img(line_img, image_in)
+    return annotated_image
+        
 
-    '''
-    ------------------------------------------------------------------------
-    CREATE NEW MASK FOR PUBLISH
-    OUSIDE LANE = OCCUPIED, WHITE, 1
-    INSIDE LANE = UNOCCUPIED, BLACK, 0
-    ------------------------------------------------------------------------
-    '''
+def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
+    global NO_LANE_COUNT, debug, CROSSWALK
 
-    mask_left = np.arange(0, IMAGE_SIZE, 1)
-    mask_right = np.arange(0, IMAGE_SIZE, 1)
+    left_color = color
+    right_color = color
 
-    mask_left = coeff_left[0] * mask_left * mask_left + coeff_left[1] * mask_left + coeff_left[2]
-    mask_left = np.zeros((IMAGE_SIZE,IMAGE_SIZE)) + mask_left
+    if lines is None or len(lines) == 0:
+        print("No line detected")
+        NO_LANE_COUNT += 1
+        if NO_LANE_COUNT < 5:
+            if len(left_coeff_buffer) < 3:
+                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            else:
+                coeff_left = left_coeff_buffer[2]
+        else:
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+    elif CROSSWALK:
+        print("ENTER CROSSWALK!")
+        if NO_LANE_COUNT < 5:
+            if len(left_coeff_buffer) < 3:
+                coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            else:
+                coeff_left = left_coeff_buffer[2]
+        else:
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+    else:
+        NO_LANE_COUNT = 0
 
-    mask_right = coeff_right[0] * mask_right * mask_right + coeff_right[1] * mask_right + coeff_right[2]
-    mask_right = np.zeros((IMAGE_SIZE,IMAGE_SIZE)) + mask_right
+        left_line_candidates = []
+        right_line_candidates = []
 
-    y_vals = np.arange(0,IMAGE_SIZE,1)
-    y_vals = np.broadcast_to(y_vals, (IMAGE_SIZE,IMAGE_SIZE)).T
+        stop_line_candidates = []
 
-    masked_img = np.zeros((IMAGE_SIZE,IMAGE_SIZE), dtype='uint8')
-    masked_img[mask_left<y_vals] = 255
-    masked_img[mask_right>y_vals] = 255
+        # Extract candidate with slope threshold
+        lower_left_thres = -1
+        upper_left_thres = 0.1
+        
+        lower_right_thres = -0.1
+        upper_right_thres = 1
 
-    #Draw lines on lane
-    cv2.polylines(img, np.int32([polypoints]), False, (255,0,0),2)
-    cv2.polylines(img, np.int32([polypoints_left_]), False, (0,255,0),2)
+        lower_stop_thres = 10
+        upper_stop_thres = 1000
+        
+        for line in lines:
+            x1, y1, x2, y2 = line[0]  # line = [[x1, y1, x2, y2]]
+            
+            # Calculate slope
+            if x2 - x1 == 0:  # Stop line case
+                slope = 999  
+            else:
+                slope = (y2 - y1) / (x2 - x1)
+                
+            # Filter lines based on slope
+            if slope > lower_left_thres and slope < upper_left_thres:
+                left_line_candidates.append(line)
+            if slope > lower_right_thres and slope < upper_right_thres:
+                right_line_candidates.append(line)
+            if slope > lower_stop_thres and slope < upper_stop_thres:
+                stop_line_candidates.append(line)
+
+        right_lines = []
+        left_lines = []
+        stop_lines = []
+        
+        # find left lines with ROI
+        if len(left_coeff_buffer) < 3:
+            left_center_y = int(IMAGE_SIZE/2 - LANE_WIDTH/2)
+            for line in left_line_candidates:
+                x1, y1, x2, y2 = line[0]
+                if y1 > left_center_y - LANE_ROI_OFFSET and y1 < left_center_y + LANE_ROI_OFFSET and y2 > left_center_y - LANE_ROI_OFFSET and y2 < left_center_y + LANE_ROI_OFFSET:
+                    left_lines.append(line)
+        else:
+            last_left_coeff = left_coeff_buffer[2]
+            last_left_f = np.poly1d(last_left_coeff)
+
+            for line in left_line_candidates:
+                x1, y1, x2, y2 = line[0]
+                if abs(y1 - last_left_f(x1)) >= LANE_ROI_OFFSET or abs(y2 - last_left_f(x2)) >= LANE_ROI_OFFSET:
+                    continue
+                left_lines.append(line)
+        
+        # find right lines with ROI
+        if len(right_coeff_buffer) < 3:
+            right_center_y = int(IMAGE_SIZE/2 + LANE_WIDTH/2)
+            for line in right_line_candidates:
+                x1, y1, x2, y2 = line[0]
+                if y1 > right_center_y - LANE_ROI_OFFSET and y1 < right_center_y + LANE_ROI_OFFSET and y2 > right_center_y - LANE_ROI_OFFSET and y2 < right_center_y + LANE_ROI_OFFSET:
+                    right_lines.append(line)
+        else:
+            last_right_coeff = right_coeff_buffer[2]
+            last_right_f = np.poly1d(last_right_coeff)
+
+            for line in right_line_candidates:
+                x1, y1, x2, y2 = line[0]
+                if abs(y1 - last_right_f(x1)) >= LANE_ROI_OFFSET or abs(y2 - last_right_f(x2)) >= LANE_ROI_OFFSET:
+                    continue
+                right_lines.append(line)
+
+        # find stop lines with width of line
+        for line in stop_line_candidates:
+            x1, y1, x2, y2 = line[0]
+            if abs(y1-y2) > 200:
+                stop_lines.append(line)
+
+        # Run linear regression to find best fit line for right and left lane lines
+        # Right lane lines
+        right_lines_x = []
+        right_lines_y = []
+        
+        for line in right_lines:
+            x1, y1, x2, y2 = line[0]
+            if abs(x2 - x1) > 300:
+                right_color = [0,0,255]
+            fill_lines(right_lines_x, right_lines_y, x1, x2, y1, y2)
+            
+        # Left lane lines
+        left_lines_x = []
+        left_lines_y = []
+        
+        for line in left_lines:
+            x1, y1, x2, y2 = line[0]
+            if abs(x2 - x1) > 300:
+                left_color = [0,0,255]
+            fill_lines(left_lines_x, left_lines_y, x1, x2, y1, y2)
+        
+        if left_lines == [] and right_lines == []:
+            NO_LANE_COUNT += 1
+            print("No line!")
+            coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+        elif left_lines and right_lines == []:
+            coeff_left = np.polyfit(left_lines_x, left_lines_y, 2)
+            coeff_right = np.array(coeff_left)
+            coeff_right[2] += LANE_WIDTH
+        elif right_lines and left_lines == []:
+            coeff_right = np.polyfit(right_lines_x, right_lines_y, 2)
+            coeff_left = np.array(coeff_right)
+            coeff_left[2] -= LANE_WIDTH
+        else:
+            coeff_left = np.polyfit(left_lines_x, left_lines_y, 2)
+            coeff_right = np.polyfit(right_lines_x, right_lines_y, 2)
+        
+        # Stop line
+        stop_lines_x = []
+        stop_lines_y = []
+
+        if stop_lines:
+            for line in stop_lines:
+                x1, y1, x2, y2 = line[0]
+                fill_lines(stop_lines_x,stop_lines_y,x1,x2,y1,y2)
+
+        # Draw the lines on image
+        polypoints_left = np.zeros((IMAGE_SIZE,2))
+        polypoints_right = np.zeros((IMAGE_SIZE,2))
+        polypoints_stop = np.zeros((IMAGE_SIZE,2))
+
+        t = np.arange(0,IMAGE_SIZE,1)
+        f = np.poly1d(coeff_left)
+        polypoints_left[:,0] = t
+        polypoints_left[:,1] = f(t)
+        cv2.polylines(img,np.int32([polypoints_left]),False,left_color,5)
+
+        f = np.poly1d(coeff_right)
+        polypoints_right[:,0] = t
+        polypoints_right[:,1] = f(t)
+
+        cv2.polylines(img,np.int32([polypoints_right]),False,right_color,5)
+
+        if debug:
+            pdb.set_trace()
+        
+        if stop_lines:
+            cv2.polylines(img,np.int32([polypoints_stop]),False,[0,0,255],5)
+        
+        if len(left_coeff_buffer) < 3:
+            left_coeff_buffer.append(coeff_left)
+        else:
+            left_coeff_buffer[:2] = left_coeff_buffer[1:]
+            left_coeff_buffer[2] = coeff_left
+        if len(right_coeff_buffer) < 3:
+            right_coeff_buffer.append(coeff_right)
+        else:
+            right_coeff_buffer[:2] = right_coeff_buffer[1:]
+            right_coeff_buffer[2] = coeff_right
+        
+        
+
+def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
+    """
+    `img` should be the output of a Canny transform.
+        
+    Returns an image with hough lines drawn.
+    """
+    lines = cv2.HoughLinesP(img, rho, theta, threshold, np.array([]), minLineLength=min_line_len, maxLineGap=max_line_gap)
+    line_img = np.zeros((img.shape[0], img.shape[1], 3), dtype=np.uint8)  # 3-channel RGB image
+    draw_lines(line_img, lines)
+    return line_img
 
 
-    #resize, rotate, and flip for output
-    M_lane_map = cv2.getRotationMatrix2D((int(MAP_SIZE/2),int(MAP_SIZE/2)),180,1)
-    M_raw_map = cv2.getRotationMatrix2D((IMAGE_SIZE/2,IMAGE_SIZE/2),90,1)
+def weighted_img(img, initial_img, a=0.8, b=1., c=0.):
+    """
+    `img` is the output of the hough_lines(), An image with lines drawn on it.
+    Should be a blank image (all black) with lines drawn on it.
+    
+    `initial_img` should be the image before any processing.
+    
+    The result image is computed as follows:
+    
+    NOTE: initial_img and img must be the same shape!
+    """
+    return cv2.addWeighted(initial_img, a, img, b, c)
 
-    masked_img = cv2.resize(masked_img,(MAP_SIZE,MAP_SIZE))
-    masked_img = masked_img.T
+def filter_colors(image):
+    global debug, CROSSWALK
+    """
+    Filter the image to include only yellow and white pixels
+    """
+    # Filter white pixels
+    white_threshold = 200
+    lower_white = np.array([white_threshold, white_threshold, white_threshold])
+    upper_white = np.array([255, 255, 255])
+    white_mask = cv2.inRange(image, lower_white, upper_white)
+    
+    # Filter yellow and blue pixels
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
+    lower_yellow = np.array([5,20,100],np.uint8)
+    upper_yellow = np.array([15,255,255],np.uint8)
+    lower_blue = np.array([95,150,150],np.uint8)
+    upper_blue = np.array([110,255,255],np.uint8)
 
-    masked_img = cv2.warpAffine(masked_img,M_lane_map,(MAP_SIZE,MAP_SIZE))
-    masked_img = cv2.flip(masked_img,1)
-    send_img_lane_map = bridge.cv2_to_imgmsg(masked_img, "mono8")
-    pub_lane_map.publish(send_img_lane_map)
+    yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
+    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    
+    # Eliminating small unnecessary dots (morphologyEx)
+    #kernel = np.ones((3,3), np.uint8)
+    #yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
+    #white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
+    #blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
+    
+    hsv_mask = yellow_mask + blue_mask
 
-    send_img =  cv2.warpAffine(img,M_raw_map,(IMAGE_SIZE,IMAGE_SIZE))
-    send_img_raw_map = bridge.cv2_to_imgmsg(send_img, "bgr8")
-    pub_raw_map.publish(send_img_raw_map)
+    white_image = cv2.bitwise_and(image, image, mask=white_mask)
+    hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
-    if Z_DEBUG:
-        cv2.imshow('image',green_mask)
-        cv2.imshow('color_image',img)
-        cv2.imshow('send_image',masked_img)
-        cv2.waitKey(1)
+    # Combine the two above images
+    image2 = cv2.addWeighted(white_image, 1., hsv_image, 1., 0.)
+    
+    if (sum(white_mask[:,450])/255 > 200 and sum(white_mask[:,450])/255 < 300) or (sum(white_mask[:,150])/255 > 200 and sum(white_mask[:,150])/255 < 300):
+        CROSSWALK = True
+    else:
+        CROSSWALK = False
+
+    return image2
+
+def annotate_image_array(image_in):
+    """ Given an image Numpy array, return the annotated image as a Numpy array """
+    # Only keep white and yellow pixels in the image, all other pixels become black
+    image = filter_colors(image_in)
+    
+    # Read in and grayscale the image
+    gray = grayscale(image)
+
+    # Apply Gaussian smoothing
+    blur_gray = gaussian_blur(gray, kernel_size)
+    
+    # Apply Canny Edge Detector
+    edges = canny(blur_gray, low_threshold, high_threshold)
+
+    # Run Hough on edge detected image
+    line_image = hough_lines(edges, rho, theta, threshold, min_line_length, max_line_gap)
+    #line_image = draw_line_with_color(binary_warped)
+    # Draw lane lines on the original image
+    annotated_image = weighted_img(line_image, image_in)
+    return annotated_image
+    
+def fill_lines(line_x, line_y, x1, x2, y1, y2):
+    if x1 > x2:
+        return fill_lines(line_x, line_y, x2,x1,y1,y2)
+    if y1 == y2:
+        for x in range(x1,x2+1):
+            line_x.append(x)
+            line_y.append(y1)
+    else:
+        # (y-y1) = a(x-x1)
+        for x in range(x1,x2+1):
+            a = (y2 - y1) / (x2 - x1)
+            y = np.round(a*(x-x1) + y1)
+            line_x.append(x)
+            line_y.append(y)
+
+
+def main():
+    rospy.init_node('draw_lane', anonymous=True)
+    ln = LaneNode()
+
+    try:
+        rospy.spin()
+    except rospy.ROSInterruptException:
+        pass
 
 
 if __name__ == '__main__':
-    rospy.loginfo('Initiate draw_lane node')
-    rospy.init_node('draw_lane', anonymous=True)
+    #main()
+    path = "/home/kimsangmin/ZERO_VISION/bird/3/"
+    file_num = 0
+    postfix = ".jpg"
+    total_file_num = 600
+    debug = False
 
-    bridge = CvBridge()
-    pub_lane_map = rospy.Publisher('/lane_map', Image, queue_size=1)
-    pub_raw_map = rospy.Publisher('/raw_local_map', Image, queue_size=1)
-
-    rospy.Subscriber("/raw_img", Image, callback)
-
-    rospy.spin()
+    while True:
+        full_path = path + str(file_num) + postfix
+        if file_num > total_file_num:
+            break
+        file_num += 1
+        img_input = cv2.imread(full_path)
+        #img_output = annotate_image_array(img_input)
+        img_output = draw_line_with_color(img_input)
+        #img_output = filter_colors(img_input)
+        cv2.imshow("img", img_output)
+        key = cv2.waitKey(10)
+        if key == ord('p'):
+            debug = not debug
+        if key == ord('q'):
+            break
+    #img_input = cv2.imread('./bird/4/166.jpg') #curve example
+    #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
+    
+    #img_output = annotate_image_array(img_input)
+    #cv2.imshow('line', img_output)
+    #cv2.waitKey(100000) 
