@@ -201,8 +201,8 @@ def draw_line_with_color(image_in):
             coeff_right = np.array(coeff_left)
             coeff_right[2] += LANE_WIDTH
         '''
-        coeff_left = np.array([10e-10,0,-100])
-        coeff_right = np.array([10e-10,0,IMAGE_SIZE+100])
+        coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
+        coeff_right = np.array([10e-10,0,int(IMAGE_SIZE/2 + LANE_WIDTH/2)])
         
     else:
         if len(left_coeff_buffer) < 3:
