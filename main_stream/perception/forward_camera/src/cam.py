@@ -25,22 +25,23 @@ H_right = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
 
 pub_mod = "warp" # "raw"
 
-H_front = np.array([[ 1.19487531e-02, -2.86323414e-01,  6.06828195e+02],
- [ 9.52720479e-01,  2.05789673e+00,  2.02883103e+01],
- [ 2.80949980e-04,  7.04105746e-03,  1.00000000e+00]]
+H_front = np.array([[ 7.24463464e-03, -3.07926267e-01,  7.93327596e+02],
+ [ 1.18294789e+00,  2.68545668e+00, -8.01974499e+01],
+ [ 2.00098970e-04,  9.09630505e-03,  1.00000000e+00]]
 
- )
-
-H_left = np.array([[ 5.71926700e-01, -1.04969924e-01,  1.86582164e+02],
- [ 5.36285141e-01,  2.08666750e+00, -2.69974867e+02],
- [ 2.95130408e-05,  6.33375337e-03,  1.00000000e+00]]
 
 )
 
-H_right = np.array([[-4.22720991e-01, -1.36598635e-01,  5.87227142e+02],
- [ 6.38491009e-01,  1.86425405e+00,  3.90691868e+02],
- [-4.27882018e-05,  6.50040189e-03,  1.00000000e+00]]
- )
+H_left = np.array([[ 1.51829177e+00 ,-3.56086666e-02 , 1.02628015e+03],
+ [ 2.65189371e+00,  7.76363177e+00, -1.39756446e+03],
+ [ 1.33740329e-03,  2.56790131e-02,  1.00000000e+00]]
+)
+
+H_right = np.array([[-3.46869877e-01, -2.34105692e-01,  5.37533684e+02],
+ [ 8.78637251e-01 , 1.09143533e+00,  3.45392159e+02],
+ [-5.79562630e-05 , 5.01844520e-03 , 1.00000000e+00]]
+
+)
 
 
 Z_DEBUG = True
@@ -86,7 +87,7 @@ def imagePublisher():
         left_masked = np.multiply(wrp_left, black_area).astype('uint8')
         right_masked = np.multiply(wrp_right, black_area).astype('uint8')
         
-        merged =  front_masked + right_masked + letf_masked
+        merged =  front_masked + right_masked + left_masked
 
         merged_msg = bridge.cv2_to_imgmsg(merged,'bgr8')
         
@@ -131,14 +132,21 @@ def imagePublisher():
 
 
 if __name__ == '__main__':
+    FRAME = 10
     try:
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(1)
-            cam_left = cv2.VideoCapture(2)
-            cam_right = cv2.VideoCapture(3)
-            cam_wide = cv2.VideoCapture(4)
+            cam_front = cv2.VideoCapture(2)
+            cam_left = cv2.VideoCapture(1)
+            cam_right = cv2.VideoCapture(4)
+            cam_wide = cv2.VideoCapture(3)
+            cam_front.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_left.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_right.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_wide.set(cv2.CAP_PROP_FPS, FRAME)
+            cv2.CAP_PROP_FPS
+
             '''
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
@@ -154,8 +162,8 @@ if __name__ == '__main__':
             cam_right.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_right.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
             cam_right.set(cv2.CAP_PROP_FOURCC, int(0x47504A4D))
-            '''
-            '''
+        
+            
             traffic_cam = cv2.VideoCapture(5)
             traffic_cam.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             traffic_cam.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)
