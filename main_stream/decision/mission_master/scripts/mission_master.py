@@ -7,10 +7,12 @@ from core_msgs.msg import MotionState
 from core_msgs.msg import ActiveNode
 from std_msgs.msg import String
 import roslaunch
+
 missionstate=MissionState()
 lightstate=LightState()
 taskstate=MissionState()
 slam_mask = True
+
 def mainloop():
     global slam_mask
     '''
@@ -40,6 +42,8 @@ def mainloop():
     uuid=roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
     slam_mask=True
+
+    # launch hector slam
     slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/catkin_ws/src/zer2019/main_stream/perception/hector_slam/hector_slam_launch/tutorial.launch"])
     rate = rospy.Rate(10) # 10hz
     #sysco = 'reset' #syscommand string
@@ -94,7 +98,7 @@ def mainloop():
             motion.motion_state="PARKING"
             if slam_mask==True:
                 slam_mask=False
-                slam_launch.start()
+                slam_launch.start() # really start hector slam
         else:
             motion.motion_state="HALT"               
         i = i+1

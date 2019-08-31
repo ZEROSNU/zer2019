@@ -6,52 +6,28 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import time
 import os
-'''
-H_front = np.array([[ 3.10164638e-02, -2.71691454e-01,  5.90104491e+02],
- [ 8.87632169e-01,  2.18687196e+00,  1.20801218e+01],
- [ 1.04434533e-05,  7.26795454e-03,  1.00000000e+00]]
-)
+import yaml
 
-H_left = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
- [ 8.77530407e-01,  2.06530134e+00, -3.14076391e+02],
- [ 3.09604396e-04,  6.04023151e-03,  1.00000000e+00]]
-)
+CONFIG_FILE = 'config_forward_cam.yaml'
+YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
-H_right = np.array([[ 4.73842015e-01, -4.65504938e-01,  3.96031931e+02],
- [ 8.77530407e-01,  2.06530134e+00, -3.14076391e+02],
- [ 3.09604396e-04,  6.04023151e-03,  1.00000000e+00]]
-)
-'''
+H_FRONT = np.array(YAML_CONFIG['H_FRONT'])
+H_LEFT = np.array(YAML_CONFIG['H_LEFT'])
+H_RIGHT = np.array(YAML_CONFIG['H_RIGHT'])
 
-pub_mod = "warp" # "raw"
+Z_DEBUG = YAML_CONFIG['Z_DEBUG']
+PUBLISH_RATE = 30
 
-H_front = np.array([[ 1.19487531e-02, -2.86323414e-01,  6.06828195e+02],
- [ 9.52720479e-01,  2.05789673e+00,  2.02883103e+01],
- [ 2.80949980e-04,  7.04105746e-03,  1.00000000e+00]]
-
- )
-
-H_left = np.array([[ 5.71926700e-01, -1.04969924e-01,  1.86582164e+02],
- [ 5.36285141e-01,  2.08666750e+00, -2.69974867e+02],
- [ 2.95130408e-05,  6.33375337e-03,  1.00000000e+00]]
-
-)
-
-H_right = np.array([[-4.22720991e-01, -1.36598635e-01,  5.87227142e+02],
- [ 6.38491009e-01,  1.86425405e+00,  3.90691868e+02],
- [-4.27882018e-05,  6.50040189e-03,  1.00000000e+00]]
- )
-
-
-Z_DEBUG = True
+WARP_WIDTH = 600
+WARP_HEIGHT = 600
 
 def warp_image(image, homography):
-    im_out = cv2.warpPerspective(image, homography, (600, 600))
+    im_out = cv2.warpPerspective(image, homography, (WARP_WIDTH, WARP_HEIGHT))
     return im_out
 
 
 def find_mask(image):
-    black_range = np.array([0,0,0])
+    black_range = np.zeros(3)
     im_mask = (cv2.inRange(image, black_range, black_range)).astype('bool')
     im_mask_inv = (1-im_mask).astype('bool')
     im_mask_inv = np.dstack((im_mask_inv, im_mask_inv, im_mask_inv))
@@ -66,7 +42,7 @@ def imagePublisher():
     
     traffic_pub = rospy.Publisher('/traffic_image', Image, queue_size=1)
     rospy.init_node('cam', anonymous=True)
-    rate=rospy.Rate(30)#30hz
+    rate=rospy.Rate(PUBLISH_RATE)
     bridge = CvBridge()
 
     traffic_count = 0
@@ -77,9 +53,9 @@ def imagePublisher():
         _, img_right = cam_right.read()
         _, img_wide = cam_wide.read()
         
-        wrp_front = warp_image(img_front, H_front)
-        wrp_left = warp_image(img_left, H_left)
-        wrp_right = warp_image(img_right, H_right)
+        wrp_front = warp_image(img_front, H_FRONT)
+        wrp_left = warp_image(img_left, H_LEFT)
+        wrp_right = warp_image(img_right, H_RIGHT)
 
         non_black_area, black_area = find_mask(wrp_front)
         front_masked = np.multiply(wrp_front, non_black_area).astype('uint8')
@@ -123,7 +99,6 @@ def imagePublisher():
             if cv2.waitKey(1)==27:
                 break
     cv2.destroyAllWindows()
-
     cam_front.release()
     cam_left.release()
     cam_right.release()
@@ -170,7 +145,7 @@ if __name__ == '__main__':
             _wide, img_wide = cam_wide.read()
 
             #if (ret1 and ret2 and ret3):
-            if(_front and _right and _left and _wide):
+            if _front and _right and _left and _wide:
                 print("All cameras connected!")
                 break
             else:
