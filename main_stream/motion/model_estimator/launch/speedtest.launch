@@ -1,0 +1,8 @@
+<launch>
+  <param name = "/dir" value = "$(find model_estimator)/data/"/>
+  
+  <node name = "lms1xx" pkg = "lms1xx" type = "LMS1xx_node" args = "_host:=169.254.37.213"/>
+  <include file = "$(find hector_slam_launch)/launch/tutorial.launch"/>
+  <include file = "$(find serial_communicator)/launch/runcar.launch"/>
+  <node name = "speedtest" pkg = "model_estimator" type = "speedtest.py" output = "screen" />
+</launch>

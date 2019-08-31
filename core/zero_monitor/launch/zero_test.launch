@@ -22,7 +22,7 @@
   </group>
 
   <group ns = "raw_local_map">
-    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py"/>
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" output = "screen"/>
   </group>
 
   <!--include file="$(find hector_slam_launch)/launch/tutorial.launch"/-->

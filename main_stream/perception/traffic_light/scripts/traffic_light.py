@@ -5,17 +5,22 @@ import numpy as np
 from core_msgs.msg import LightState
 from core_msgs.msg import ActiveNode
 from sensor_msgs.msg import Image
+from cv_bridge import CvBridge, CvBridgeError
+import cv2
 
 count = 0 # count for late update 30Hz -> 10Hz
 
+
+light = LightState()
+
 def mainloop():
+    global light
     '''
     code for activate and deactivate the node
     '''
     nodename = 'traffic_light'
     mainloop.active = True
 
-    light = LightState()
 
     def signalResponse(data) :
         mainloop.active
@@ -33,7 +38,7 @@ def mainloop():
     '''
     pub = rospy.Publisher('/light_state', LightState, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
-    rate = rospy.Rate(10) # 10hz
+    rate = rospy.Rate(3) # 10hz
     
     i=0
     while not rospy.is_shutdown():
@@ -47,18 +52,18 @@ def mainloop():
 
 def callback(data):
     global light
-    
-    bgr = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+    bridge = CvBridge()
+    bgr = bridge.imgmsg_to_cv2(data, 'bgr8')
     
     rgb = np.zeros(bgr.shape)
     rgb[:,:,0] = bgr[:,:,2]
     rgb[:,:,1] = bgr[:,:,1]
     rgb[:,:,2] = bgr[:,:,0]
 
-    tl_path = '/home/kimsangmin/ZERO_VISION/PyTorch-YOLOv3/output/tl.txt'
-    tl_img_path = '/home/kimsangmin/catkin_ws/src/zer2019/core/zero_monitor/data/traffic/test.jpg'
+    tl_path = '/home/snuzero/tl_classification/output/tl.txt'
+    tl_img_path = '/home/snuzero/zero_ws/src/zer2019/core/zero_monitor/data/traffic/test.jpg'
     
-    cv2.imwrite(tl_img_path,rgb)
+    cv2.imwrite(tl_img_path,bgr)
 
     with open(tl_path,'r') as f:
         state = f.read()

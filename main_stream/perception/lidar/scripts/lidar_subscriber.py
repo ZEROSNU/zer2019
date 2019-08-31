@@ -28,6 +28,9 @@ def callback(data):
     r = r[90:-90]         # len(r)=361
 
     pmap = generate_ray_casting_grid_map(r)
+    pmap[:LEN_X - 30,:] = pmap[30:,:]
+    pamp[LEN_X - 30:,:] = 0
+
     img_msg = ros_numpy.msgify(Image, pmap, encoding='mono8')
     if isactive:
         lidar_map_pub.publish(img_msg)

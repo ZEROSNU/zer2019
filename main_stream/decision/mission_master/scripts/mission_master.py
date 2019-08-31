@@ -40,7 +40,7 @@ def mainloop():
     uuid=roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
     slam_mask=True
-    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/catkin_ws/src/zer2019/main_stream/perception/hector_slam/hector_slam_launch/tutorial.launch"])
+    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/zero_ws/src/zer2019/main_stream/perception/modified_hector_slam/hector_slam_launch/tutorial.launch"])
     rate = rospy.Rate(10) # 10hz
     #sysco = 'reset' #syscommand string
     motion = MotionState()
