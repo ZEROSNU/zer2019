@@ -374,15 +374,32 @@ def draw_line_with_color(image_in):
     polypoints_right[:,1] = f(t)
 
     cv2.polylines(line_img,np.int32([polypoints_right]),False,right_color,5)
+    
+    mask_left = np.arange(0, IMAGE_SIZE, 1)
+    mask_right = np.arange(0, IMAGE_SIZE, 1)
+
+    mask_left = coeff_left[0] * mask_left * mask_left + coeff_left[1] * mask_left + coeff_left[2]
+    mask_left = np.zeros((IMAGE_SIZE,IMAGE_SIZE)) + mask_left
+
+    mask_right = coeff_right[0] * mask_right * mask_right + coeff_right[1] * mask_right + coeff_right[2]
+    mask_right = np.zeros((IMAGE_SIZE,IMAGE_SIZE)) + mask_right    
+
+    y_vals = np.arange(0,IMAGE_SIZE,1)
+    y_vals = np.broadcast_to(y_vals, (IMAGE_SIZE,IMAGE_SIZE)).T    
+
+    masked_img = np.zeros((IMAGE_SIZE,IMAGE_SIZE), dtype='uint8')
+    masked_img[mask_left>y_vals] = 100
+    masked_img[mask_right<y_vals] = 100
+
 
     if len(stop_lines) > 5:
         polypoints_stop[:,1] = t
         polypoints_stop[:,0] = stop_lines[0]
     
-        cv2.polylines(line_img,np.int32([polypoints_stop]),False,stop_line_color,5)
+        cv2.polylines(masked_img,np.int32([polypoints_stop]),False,255,5)
 
     annotated_image = weighted_img(line_img, image_in)
-    return line_img, annotated_image, is_center_left, is_center_right
+    return masked_img, annotated_image, is_center_left, is_center_right
         
 
 def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
@@ -728,6 +745,7 @@ if __name__ == '__main__':
             break
         file_num += 1
         img_input = cv2.imread(full_path)
+        img_input = img_input[:,:IMAGE_SIZE]
         #img_output = annotate_image_array(img_input)
         img_output, annotate_image, left, right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
@@ -736,12 +754,12 @@ if __name__ == '__main__':
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
         dst = cv2.warpAffine(map_img,matrix,(MAP_SIZE,MAP_SIZE))
         #img_output = filter_colors(img_input)
-        cv2.imshow("img", annotate_image)
+        cv2.imshow("img", dst)
         print((left,right))
         key = cv2.waitKey(10)
         if key == ord('q'):
             break
-    '''
+    ''' 
     #img_input = cv2.imread('./bird/4/166.jpg') #curve example
     #img_input = cv2.imread('./bird/4/187.jpg') #challenging curve example
     

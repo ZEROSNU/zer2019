@@ -97,14 +97,17 @@ def mainloop():
                 slam_launch.start()
         else:
             motion.motion_state="HALT"               
+
         i = i+1
         if mainloop.active :
             pub.publish(motion)
         rate.sleep()
+
 def mscb(data) :
     print ("got mission state - <"+ data.mission_state+">\n")
     missionstate.mission_state=data.mission_state
-    return 0    
+    return 0
+    
 def lscb(data) :
     print ("got light state - <%d,[%d,%d,%d,%d]>\n " % (data.light_found, data.red, data.yellow, data.left,data.green))
     lightstate.light_found=data.light_found

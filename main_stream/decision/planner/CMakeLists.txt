@@ -23,12 +23,17 @@ set (SOURCES
   ${CMAKE_CURRENT_SOURCE_DIR}/src/magneticmodel.cpp
   ${CMAKE_CURRENT_SOURCE_DIR}/src/potentialmodel.cpp
 )
+set (SOURCES_ASTAR
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/carsetupcomhandle_astar.cpp
+  ${CMAKE_CURRENT_SOURCE_DIR}/src/hybrid_astar.cpp
+)
 
 set (HEADERS
   ${CMAKE_CURRENT_SOURCE_DIR}/include/carsetupcomhandle.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/DORRT.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/magneticmodel.h
   ${CMAKE_CURRENT_SOURCE_DIR}/include/potentialmodel.h
+  ${CMAKE_CURRENT_SOURCE_DIR}/include/hybrid_astar.h
 )
 
 
@@ -40,5 +45,7 @@ include_directories(include include)
 find_package(OMPL REQUIRED)
 find_package(Eigen3 REQUIRED)
 
-add_executable(planner src/planner.cpp ${HEADERS} ${SOURCES})
-target_link_libraries(planner ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${Eigen3_LIBS})
+add_executable(dorrt src/planner.cpp ${HEADERS} ${SOURCES})
+add_executable(astar src/planner_astar.cpp ${HEADERS} ${SOURCES_ASTAR})
+target_link_libraries(dorrt ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${Eigen3_LIBS})
+target_link_libraries(astar ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${Eigen3_LIBS})

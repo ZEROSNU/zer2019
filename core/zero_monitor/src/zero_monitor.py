@@ -30,6 +30,7 @@ from nav_msgs.msg import Path
 from nav_msgs.msg import OccupancyGrid
 from tf2_msgs.msg import TFMessage
 from geometry_msgs.msg import PoseStamped
+from geometry_msgs.msg import PoseWithCovarianceStamped
 from geometry_msgs.msg import TransformStamped
 from std_msgs.msg import Header
 
@@ -129,6 +130,8 @@ class Topic(BaseWidget) :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackOccupancyGrid)
         elif self.dform == PoseStamped :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackPoseStamped)
+        elif self.dform == PoseWithCovarianceStamped :
+            self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackPoseWithCovarianceStamped)
         elif self.dform == TFMessage :
             self.sub = rospy.Subscriber(self.name, self.dform, self.__callbackTFMessage)
         elif self.dform == VelocityLevel :
@@ -210,6 +213,18 @@ class Topic(BaseWidget) :
         self._pose_orientation_y.value = data.pose.orientation.y
         self._pose_orientation_z.value = data.pose.orientation.z
         self._pose_orientation_w.value = data.pose.orientation.w
+    def __callbackPoseWithCovarianceStamped(self, data) :
+        self._header_seq.value = data.header.seq
+        self._header_stamp_secs.value = data.header.stamp.secs
+        self._header_stamp_nsecs.value = data.header.stamp.nsecs
+        self._header_frame_id.value = data.header.frame_id
+        self._pose_pose_position_x.value = data.pose.pose.position.x
+        self._pose_pose_position_y.value = data.pose.pose.position.y
+        self._pose_pose_position_z.value = data.pose.pose.position.z
+        self._pose_pose_orientation_x.value = data.pose.pose.orientation.x
+        self._pose_pose_orientation_y.value = data.pose.pose.orientation.y
+        self._pose_pose_orientation_z.value = data.pose.pose.orientation.z
+        self._pose_pose_orientation_w.value = data.pose.pose.orientation.w
     def __callbackTFMessage(self, data) :
         for i in data.transforms :
             tag = i.header.frame_id + " to " + i.child_frame_id
@@ -480,6 +495,18 @@ class Topic(BaseWidget) :
                 pubData.pose.orientation.z = self._pose_orientation_z.value / qnorm
                 pubData.pose.orientation.w = self._pose_orientation_w.value / qnorm
                 self.pub.publish(pubData)
+            elif self.dform == PoseWithCovarianceStamped :
+                head.frame_id = self._header_frame_id.value
+                pubData = PoseWithCovarianceStamped()
+                pubData.header = head
+                pubData.pose.pose.position.x = self._pose_pose_position_x.value
+                pubData.pose.pose.position.y = self._pose_pose_position_y.value
+                pubData.pose.pose.position.z = self._pose_pose_position_z.value
+                qnorm = np.linalg.norm([self._pose_pose_orientation_x.value, self._pose_pose_orientation_y.value, self._pose_pose_orientation_z.value, self._pose_pose_orientation_w.value])
+                pubData.pose.pose.orientation.x = self._pose_pose_orientation_x.value / qnorm
+                pubData.pose.pose.orientation.y = self._pose_pose_orientation_y.value / qnorm
+                pubData.pose.pose.orientation.z = self._pose_pose_orientation_z.value / qnorm
+                pubData.pose.pose.orientation.w = self._pose_pose_orientation_w.value / qnorm
             elif self.dform == TFMessage :
                 head.frame_id = self._transforms_header_frame_id.value
                 pubData = TFMessage()
@@ -708,6 +735,30 @@ class Topic(BaseWidget) :
             self._pose_orientation_w.min = -100
             self._pose_orientation_w.decimals = 3
             self.formset[1].append( ('_pose_orientation_x', '_pose_orientation_y', '_pose_orientation_z', '_pose_orientation_w') )
+        elif self.dform == PoseWithCovarianceStamped :
+            self._pose_pose_position_x = ControlNumber('pose.pose.position.x:')
+            self._pose_pose_position_x.min = -100
+            self._pose_pose_position_x.decimals = 3
+            self._pose_pose_position_y = ControlNumber('y:')
+            self._pose_pose_position_y.min = -100
+            self._pose_pose_position_y.decimals = 3
+            self._pose_pose_position_z = ControlNumber('z:')
+            self._pose_pose_position_z.min = -100
+            self._pose_pose_position_z.decimals = 3
+            self.formset[1].append( ('_pose_pose_position_x','_pose_pose_position_y','_pose_pose_position_z' ))
+            self._pose_pose_orientation_x = ControlNumber('pose.pose.orientation.x')
+            self._pose_pose_orientation_x.min = -100
+            self._pose_pose_orientation_x.decimals = 3
+            self._pose_pose_orientation_y = ControlNumber('y:')
+            self._pose_pose_orientation_y.min = -100
+            self._pose_pose_orientation_y.decimals = 3
+            self._pose_pose_orientation_z = ControlNumber('z:')
+            self._pose_pose_orientation_z.min = -100
+            self._pose_pose_orientation_z.decimals = 3
+            self._pose_pose_orientation_w = ControlNumber('w:')
+            self._pose_pose_orientation_w.min = -100
+            self._pose_pose_orientation_w.decimals = 3
+            self.formset[1].append( ('_pose_pose_orientation_x', '_pose_pose_orientation_y', '_pose_pose_orientation_z', '_pose_pose_orientation_w') )
         elif self.dform == TFMessage :
             self._data = {}
             self._transforms = ControlCombo('transforms')
@@ -835,8 +886,6 @@ class MainMonitor(BaseWidget) :
         self._topicOccupancyMap = Topic.names['/occupancy_map'].button
         Topic('/lane_data', Image)
         self._topicLaneData = Topic.names['/lane_data'].button
-        Topic('/raw_local_map', Image)
-        self._topicRawLocalMap = Topic.names['/raw_local_map'].button
         Topic('/mission_state', MissionState)
         self._topicMissionState = Topic.names['/mission_state'].button
         Topic('/light_state', LightState)
@@ -850,7 +899,11 @@ class MainMonitor(BaseWidget) :
         Topic('/goal_pose', PoseStamped)
         self._topicGoalPose = Topic.names['/goal_pose'].button
         Topic('/tf', TFMessage)
-        self._topicTFInformation = Topic.names['/tf'].button
+        self._topicTF = Topic.names['/tf'].button
+        Topic('/vehicle_pose', PoseWithCovarianceStamped)
+        self._topicVehiclePose = Topic.names['/vehicle_pose'].button
+        Topic('/global_map', OccupancyGrid)
+        self._topicGlobalMap = Topic.names['/global_map'].button
         Topic('/velocity_level', VelocityLevel)
         self._topicVelocityLevel = Topic.names['/velocity_level'].button
         Topic('/path', Path)
@@ -882,30 +935,32 @@ class MainMonitor(BaseWidget) :
         Node('imu_encoder')
         self._nodeIMUEncoder = Node.names['imu_encoder'].button
         Node.names['imu_encoder'].setPub('/imu_speed')
-        Node('raw_local_map')
-        self._nodeRawLocalMap = Node.names['raw_local_map'].button
-        Node.names['raw_local_map'].setSub('/occupancy_map')
-        Node.names['raw_local_map'].setSub('/lane_data')
-        Node.names['raw_local_map'].setPub('/raw_local_map')
         Node('mission_master')
         self._nodeMissionMaster = Node.names['mission_master'].button
         Node.names['mission_master'].setSub('/mission_state')
         Node.names['mission_master'].setSub('/light_state')
         Node.names['mission_master'].setSub('/task')
         Node.names['mission_master'].setPub('/motion_state')
-        Node('local_map_generator')
-        self._nodeLocalMapGenerator = Node.names['local_map_generator'].button
-        Node.names['local_map_generator'].setSub('/raw_local_map')
-        Node.names['local_map_generator'].setSub('/motion_state')
-        Node.names['local_map_generator'].setPub('/local_map')
-        Node.names['local_map_generator'].setPub('/goal_pose')
-        Node.names['local_map_generator'].setPub('/tf')
-        Node.names['local_map_generator'].setPub('/velocity_level')
+        Node('map_merger')
+        self._nodeMapMerger = Node.names['map_merger'].button
+        Node.names['map_merger'].setSub('/occupancy_map')
+        Node.names['map_merger'].setSub('/lane_data')
+        Node.names['map_merger'].setSub('/motion_state')
+        Node.names['map_merger'].setPub('/goal_pose')
+        Node.names['map_merger'].setPub('/local_map')
+        Node.names['map_merger'].setPub('/velocity_level')
+        Node('hector_slam')
+        self._nodeHectorSlam = Node.names['hector_slam'].button
+        Node.names['hector_slam'].setPub('/tf')
+        Node.names['hector_slam'].setPub('/vehicle_pose')
+        Node.names['hector_slam'].setPub('/global_map')
         Node('path_planner')
         self._nodePathPlanner = Node.names['path_planner'].button
         Node.names['path_planner'].setSub('/local_map')
         Node.names['path_planner'].setSub('/goal_pose')
         Node.names['path_planner'].setSub('/tf')
+        Node.names['path_planner'].setSub('/vehicle_pose')
+        Node.names['path_planner'].setSub('/global_map')
         Node.names['path_planner'].setPub('/path')
         Node('path_tracker')
         self._nodePathTracker = Node.names['path_tracker'].button
@@ -916,6 +971,7 @@ class MainMonitor(BaseWidget) :
         self._nodeModelEstimator = Node.names['model_estimator'].button
         Node.names['model_estimator'].setSub('/curvature')
         Node.names['model_estimator'].setSub('/velocity_level')
+        Node.names['model_estimator'].setSub('/imu_speed')
         Node.names['model_estimator'].setPub('/calibrated_control')
         Node('serial_communicator')
         self._nodeSerialCommunicator = Node.names['serial_communicator'].button
@@ -940,12 +996,12 @@ class MainMonitor(BaseWidget) :
         self._activateAll.value = self.__activateAll
         self.formset = [[('-----------------------Nodes-----------------------'),
                         ('_nodeLidar', '_nodeForwardCamera', '_nodeGPS', '_nodeTrafficLight', '_nodeSignCamera', '_nodeIMUEncoder'),
-                        ('_nodeRawLocalMap', '_nodeMissionMaster', '_nodeLocalMapGenerator', '_nodePathPlanner' ),
+                        ('_nodeMissionMaster', '_nodeMapMerger', '_nodeHectorSlam', '_nodePathPlanner'),
                         ('_nodePathTracker', '_nodeModelEstimator', '_nodeSerialCommunicator'),
                         ('-----------------------Topics----------------------'),
                         ('_topicOccupancyMap', '_topicLaneData', '_topicMissionState', '_topicLightState', '_topicTask','_topicImuSpeed'),
-                        ('_topicRawLocalMap', '_topicMotionState', '_topicVelocityLevel', '_topicTFInformation', '_topicLocalMap', '_topicGoalPose', '_topicPath'),
-                        ('_topicCurvature', '_topicCalibratedControl','_topicVehicleState'),
+                        ('_topicMotionState', '_topicVelocityLevel', '_topicLocalMap', '_topicGoalPose', '_topicTF', '_topicVehiclePose', '_topicGlobalMap'),
+                        ('_topicPath', '_topicCurvature', '_topicCalibratedControl','_topicVehicleState'),
                         ('_---------------------------------------------------'),
                         ('_closeAll'),
                         ('_deactivateAll', '_activateAll'),
