@@ -130,6 +130,7 @@ if __name__ == "__main__":
     '''
     code for activate and deactivate the node
     '''
+    nodename = 'lidar_subscriber'
     isactive = True
     def signalResponse(data) :
         if 'zero_monitor' in data.active_nodes :
@@ -143,7 +144,7 @@ if __name__ == "__main__":
     '''
     ...
     '''
-    rospy.init_node('lidar_subscriber', anonymous=True)
+    rospy.init_node(nodename, anonymous=True)
     rospy.Subscriber("/scan", LaserScan, callback)
     lidar_map_pub = rospy.Publisher('/occupancy_map', Image, queue_size=1)
     rospy.spin()
