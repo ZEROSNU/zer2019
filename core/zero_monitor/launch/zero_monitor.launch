@@ -51,7 +51,8 @@
   </group>
 
   <group ns = "planner">
-    <node name = "planner" pkg = "planner" type = "planner"/>
+    <node name = "dorrt" pkg = "planner" type = "dorrt"/>
+    <node name = "astar" pkg = "planner" type = "astar"/>
   </group>
 
   <group ns = "path_tracker">
