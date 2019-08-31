@@ -116,12 +116,13 @@ def lscb(data) :
     lightstate.left=data.left
     lightstate.green=data.green
     return 0
-
+​
 def tcb(data) :
     print ("got task - <"+ data.mission_state+">\n")
     taskstate.mission_state=data.mission_state
     return 0
-
+​
+​
 if __name__ == '__main__':
     try:
         mainloop()
