@@ -6,38 +6,54 @@ import cv2
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
+from core_msgs.msg import ActiveNode
 
 
-
-def send_image():
-    pub = rospy.Publisher('/raw_img', Image, queue_size=10)
-    rospy.init_node('cam_node', anonymous=True)
-    rate = rospy.Rate(10) # N hz
-
-    while not rospy.is_shutdown():
-        #Dataset Path
-        global count
-        path = rospy.get_param('/data_path')+'lane1/'
-        ext = '.jpg'
-        num_of_files = 2000
-        if count < num_of_files:
-            full_path = path + str(count) + ext
-            count = count + 1
+class FakeCam:
+    def __init__(self):
+        self.node_name = 'fake_cam'
+        self.pub_raw_image = rospy.Publisher('/forward_camera/raw_img', Image, queue_size=1)
+        self.active = True
+        self.count = 0
+    '''
+    def signalResponse(self, data):
+        if 'zero_monitor' in data.active_nodes:
+            if self.node_name in data.active_nodes:
+                self.active = True
+            else:
+                self.active = False
         else:
-            full_path = path + str(count) + ext
-            count = 1000
-
+            rospy.signal_shutdown('no monitor')
+    '''
+    def send_image(self):
+        rate = rospy.Rate(20)
+        path = rospy.get_param('/data_path/bird/')
+        #path = '/home/kimsangmin/ZERO_VISION/bird/3/'
+        ext = '.jpg'
+        num_of_files = 600
+        if self.count < num_of_files:
+            full_path = path + str(self.count) + ext
+            self.count += 1
+        else:
+            full_path = path + str(self.count) + ext
+            self.count = 0
         img = cv2.imread(full_path)
         bridge = CvBridge()
         img_msg = bridge.cv2_to_imgmsg(img, 'bgr8')
 
-        pub.publish(img_msg)
+        self.pub_raw_image.publish(img_msg)
         rate.sleep()
 
+def main():
+    rospy.init_node('fake_cam', anonymous=True)
+    fc = FakeCam()
+
+    while not rospy.is_shutdown():
+        try:
+            fc.send_image()
+        except rospy.ROSInterruptException:
+            pass
+    
+
 if __name__ == '__main__':
-    try:
-        rospy.loginfo('Initiate fake_cam node')
-        count = 1000
-        send_image()
-    except rospy.ROSInterruptException:
-        pass
+    main()

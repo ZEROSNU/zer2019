@@ -5,10 +5,14 @@ from core_msgs.msg import MissionState
 from core_msgs.msg import LightState
 from core_msgs.msg import MotionState
 from core_msgs.msg import ActiveNode
+from std_msgs.msg import String
+import roslaunch
 missionstate=MissionState()
 lightstate=LightState()
 taskstate=MissionState()
+slam_mask = True
 def mainloop():
+    global slam_mask
     '''
     code for activate and deactivate the node
     '''
@@ -31,14 +35,24 @@ def mainloop():
     rospy.Subscriber("/light_state", LightState, lscb)
     rospy.Subscriber("/task", MissionState, tcb)
     pub = rospy.Publisher('/motion_state', MotionState, queue_size = 10)
+    #pub_reset_hector = rospy.Publisher('/syscommand', String, queue_size = 10) #syscommand
     rospy.init_node(nodename, anonymous=True)
+    uuid=roslaunch.rlutil.get_or_generate_uuid(None, False)
+    roslaunch.configure_logging(uuid)
+    slam_mask=True
+    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/catkin_ws/src/zer2019/main_stream/perception/hector_slam/hector_slam_launch/tutorial.launch"])
     rate = rospy.Rate(10) # 10hz
+    #sysco = 'reset' #syscommand string
     motion = MotionState()
     motion.header.frame_id = 'gps'
     i=0
     while not rospy.is_shutdown():
         motion.header.stamp = rospy.Time.now()
         motion.header.seq = i
+        if taskstate.mission_state!="PARKING" or missionstate.mission_state!="PARKING":
+            if slam_mask==False:
+                slam_mask=True
+                slam_launch.shutdown()
         if taskstate.mission_state=="NO_SIGN":
             if missionstate.mission_state=="DRIVING_SECTION":
                 motion.motion_state="FORWARD_MOTION"
@@ -78,6 +92,9 @@ def mainloop():
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="PARKING" and missionstate.mission_state=="PARKING":
             motion.motion_state="PARKING"
+            if slam_mask==True:
+                slam_mask=False
+                slam_launch.start()
         else:
             motion.motion_state="HALT"            
                 

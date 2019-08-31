@@ -24,6 +24,7 @@
 namespace ob = ompl::base;
 namespace og = ompl::geometric;
 namespace oc = ompl::control;
+bool nodeactivation = true;
 
 void simplecarmodel(const ob::State *state, const oc::Control *control, const double time, ob::State *sp, double length) {
     const auto *s = state->as<ob::SE2StateSpace::StateType>();
@@ -40,7 +41,6 @@ void simplecarmodel(const ob::State *state, const oc::Control *control, const do
     sp->as<ob::SE2StateSpace::StateType>()->setYaw(yaw);
 }
 
-bool nodeactivation = true;
 void activecb(core_msgs::ActiveNode::ConstPtr msg) {
     int length = msg->active_nodes.size();
     bool kill = true;
