@@ -9,7 +9,9 @@
 * roscore
   `roscore`
 
-* gps
+
+
+* GPS
 
   1. inject the arduino usb to the usb port
 
@@ -33,5 +35,10 @@
   
      
   
-* 
+* Lidar
 
+  `$ ./run_lidar.sh`
+
+
+
+* Camera
