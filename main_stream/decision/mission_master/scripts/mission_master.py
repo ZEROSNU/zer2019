@@ -42,9 +42,7 @@ def mainloop():
     uuid=roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
     slam_mask=True
-
-    # launch hector slam
-    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/catkin_ws/src/zer2019/main_stream/perception/hector_slam/hector_slam_launch/tutorial.launch"])
+    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/zero_ws/src/zer2019/main_stream/perception/modified_hector_slam/hector_slam_launch/tutorial.launch"])
     rate = rospy.Rate(10) # 10hz
     #sysco = 'reset' #syscommand string
     motion = MotionState()
@@ -98,17 +96,20 @@ def mainloop():
             motion.motion_state="PARKING"
             if slam_mask==True:
                 slam_mask=False
-                slam_launch.start() # really start hector slam
+                slam_launch.start()
         else:
             motion.motion_state="HALT"               
+
         i = i+1
         if mainloop.active :
             pub.publish(motion)
         rate.sleep()
+
 def mscb(data) :
     print ("got mission state - <"+ data.mission_state+">\n")
     missionstate.mission_state=data.mission_state
-    return 0    
+    return 0
+
 def lscb(data) :
     print ("got light state - <%d,[%d,%d,%d,%d]>\n " % (data.light_found, data.red, data.yellow, data.left,data.green))
     lightstate.light_found=data.light_found

@@ -1,4 +1,6 @@
 <launch>
+  <node name = "lms1xx" pkg = "lms1xx" type = "LMS1xx_node" args = "_host:=169.254.37.213"/>
+
   <!--
   contest parameters
   -->
@@ -10,7 +12,7 @@
   -->
 
   <group ns = "zero_monitor">
-    <node name = "zero_monitor" pkg = "zero_monitor" type = "zero_monitor.py" respawn = "true" />
+    <node name = "zero_monitor" pkg = "zero_monitor" type = "zero_monitor.py"  />
   </group>
 
   <group ns = "imu_encoder">
@@ -22,7 +24,7 @@
   </group>
 
   <group ns = "raw_local_map">
-    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py"/>
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" output = "screen"/>
   </group>
 
   <group ns = "forward_camera">
@@ -46,12 +48,10 @@
     <node name = "mission_master" pkg = "mission_master" type = "mission_master.py"/>
   </group>
 
-  <group ns = "local_map_generator">
-    <node name = "local_map_generator" pkg = "local_map_generator" type = "local_map_generator.py"/>
-  </group>
 
   <group ns = "planner">
-    <node name = "planner" pkg = "planner" type = "planner"/>
+    <node name = "dorrt" pkg = "planner" type = "dorrt"/>
+    <node name = "astar" pkg = "planner" type = "astar"/>
   </group>
 
   <group ns = "path_tracker">

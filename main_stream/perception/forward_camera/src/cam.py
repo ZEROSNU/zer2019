@@ -62,7 +62,7 @@ def imagePublisher():
         left_masked = np.multiply(wrp_left, black_area).astype('uint8')
         right_masked = np.multiply(wrp_right, black_area).astype('uint8')
         
-        merged =  front_masked + right_masked + letf_masked
+        merged =  front_masked + right_masked + left_masked
 
         merged_msg = bridge.cv2_to_imgmsg(merged,'bgr8')
         
@@ -99,6 +99,7 @@ def imagePublisher():
             if cv2.waitKey(1)==27:
                 break
     cv2.destroyAllWindows()
+
     cam_front.release()
     cam_left.release()
     cam_right.release()
@@ -106,14 +107,21 @@ def imagePublisher():
 
 
 if __name__ == '__main__':
+    FRAME = 10
     try:
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(1)
-            cam_left = cv2.VideoCapture(2)
-            cam_right = cv2.VideoCapture(3)
-            cam_wide = cv2.VideoCapture(4)
+            cam_front = cv2.VideoCapture(2)
+            cam_left = cv2.VideoCapture(1)
+            cam_right = cv2.VideoCapture(4)
+            cam_wide = cv2.VideoCapture(3)
+            cam_front.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_left.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_right.set(cv2.CAP_PROP_FPS, FRAME)
+            cam_wide.set(cv2.CAP_PROP_FPS, FRAME)
+            cv2.CAP_PROP_FPS
+
             '''
             cam_front.set(cv2.CAP_PROP_FRAME_WIDTH, 864)
             cam_front.set(cv2.CAP_PROP_FRAME_HEIGHT, 480)

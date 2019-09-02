@@ -2,8 +2,12 @@
 # license removed for brevity
 import rospy
 from core_msgs.msg import ImuSpeed
-from core_msgs.msg import Control
+from core_msgs.msg import Curvature
+from core_msgs.msg import VelocityLevel
 from core_msgs.msg import ActiveNode #add
+
+steer = 0
+velocity = 0
 
 def mainloop():
     '''
@@ -25,7 +29,8 @@ def mainloop():
     ...
     '''
     rospy.Subscriber("/imu_speed", ImuSpeed, icb)
-    rospy.Subscriber("/ideal_control", Control, ccb)
+    rospy.Subscriber("/curvature", Curvature, ccb)
+    rospy.Subscriber("/velocity_level", VelocityLevel, vcb)
     pub = rospy.Publisher('/calibrated_control', Control, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
@@ -36,17 +41,21 @@ def mainloop():
         control.header.stamp = rospy.Time.now()
         control.header.seq = i
         i = i+1
+        control.speed = velocity
+        control.steer = steer
         if mainloop.active:
             pub.publish(control)
         rate.sleep()
+def vcb(data) :
+    velocity = data.velocity_level
+
 
 def icb(data) :
     print ("got imuspeed")
     return 0
     
 def ccb(data) :
-    print ("got control")
-    return 0
+    steer = np.atan(1.3*data.curvature)
 
 
 

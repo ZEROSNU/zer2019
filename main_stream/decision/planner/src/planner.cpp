@@ -5,6 +5,7 @@
 #include "potentialmodel.h"
 #include "visualization_msgs/MarkerArray.h"
 #include "geometry_msgs/PoseArray.h"
+#include "core_msgs/MotionState.h"
 #include <string>
 #include <iostream>
 #include <functional>
@@ -25,6 +26,7 @@ namespace ob = ompl::base;
 namespace og = ompl::geometric;
 namespace oc = ompl::control;
 bool nodeactivation = true;
+bool parking = false;
 
 void simplecarmodel(const ob::State *state, const oc::Control *control, const double time, ob::State *sp, double length) {
     const auto *s = state->as<ob::SE2StateSpace::StateType>();
@@ -39,6 +41,18 @@ void simplecarmodel(const ob::State *state, const oc::Control *control, const do
     yaw += tan(u2)/length;
     sp->as<ob::SE2StateSpace::StateType>()->setXY(x,y);
     sp->as<ob::SE2StateSpace::StateType>()->setYaw(yaw);
+}
+void motioncb(core_msgs::MotionState::ConstPtr msg) {
+    std::cout << "motion cb : " << std::endl;
+    if (msg->motion_state.compare("PARKING") == 0) {
+        parking = true;
+        std::cout << "parking" << std::endl;
+    }
+    else {
+        parking = false;
+        std::cout << "not parking" << std::endl;
+    }
+    return;
 }
 
 void activecb(core_msgs::ActiveNode::ConstPtr msg) {
@@ -83,7 +97,7 @@ int main (int argc, char **argv) {
     double StepSize = 0.01;
     ros::NodeHandle nh;
 
-
+    ros::Subscriber isparking = nh.subscribe("/motion_state", 1000, motioncb);
     ros::Subscriber activenode = nh.subscribe("/active_nodes", 1000, activecb);
     
     std::string map_id = "car_frame";
@@ -99,6 +113,11 @@ int main (int argc, char **argv) {
     //*/
     ompl::doRRTPtr pl(std::make_shared<ompl::doRRT>(si, mm, pm));
     while(ros::ok()) {
+        if(!parking) {
+            ros::spinOnce();
+//            std::cout << "not parking" << std::endl;
+            continue;
+        }
         if(CarSetupComHandle::isUpdatedMap()) {
             ss.clear();
             int gseq = CarSetupComHandle::GetLatestGoalSeq();
