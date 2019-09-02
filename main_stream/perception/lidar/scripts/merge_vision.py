@@ -21,7 +21,7 @@ is_left_cen = True
 is_right_cen = True
 IMG_SIZE = 200
 
-ROTATION = [np.pi/4,0,-np.pi/4]
+ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
 
 class ImageMerger():
     def __init__(self):
@@ -130,8 +130,9 @@ class ImageMerger():
         self.pose.pose.orientation.z = qframe[2]
         self.pose.pose.orientation.w = qframe[3]
             #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
-        if "SLOW" in motion:
-            self.velocity.velocity_level = 50
+        if not isinstance(motion, type(None))
+            if "SLOW" in motion:
+                self.velocity.velocity_level = 50
 
 def lane_callback(img):
     merger.set_lane_map(img)
