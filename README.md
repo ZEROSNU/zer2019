@@ -1,19 +1,19 @@
 # ZERO 2019 Autonomous Vehicle Project
 
 ## Installation
-* ./install.sh
+ `$ ./install.sh`
 
-  
+
 
 ## Run the code
 * roscore
-  `roscore`
+  `$ roscore`
 
 
 
 * GPS
 
-  1. inject the arduino usb to the usb port
+  1. inject the Arduino usb to the usb port
 
   2. check the port of the usb by typing  `$ ls /dev/ttyACM*`
 
@@ -37,8 +37,21 @@
   
 * Lidar
 
-  `$ ./run_lidar.sh`
+  `$ ./lidar_run.sh`
 
 
 
 * Camera
+
+  * Check port number (1 = left_cam, 2 = front_cam, 3 = wide_cam, 4 = right_cam)
+
+  * test
+
+    `$ ./cam_test.sh`
+
+  * real-time input
+
+    `$ ./cam_run.sh`
+
+  
+
