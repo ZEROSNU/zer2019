@@ -4,6 +4,8 @@ import rospy
 import cv2
 import math
 import numpy as numpy
+import yaml
+import os
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
@@ -11,7 +13,6 @@ from vision_utils import *
 from core_msgs.msg import ActiveNode
 from core_msgs.msg import CenterLine
 from matplotlib import pyplot as plt
-import pdb
 from time import sleep # for debug 
 
 
@@ -28,7 +29,7 @@ BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
 
-CONFIG_FILE = 'config_forward_cam.yaml'
+CONFIG_FILE = os.path.join(os.getcwd(), 'config_forward_cam.yaml')
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
@@ -81,9 +82,9 @@ MAX_LINE_GAP = 10    # maximum gap in pixels between connectable line segments
 # Color Thresholds
 WHITE_THRESHOLD = YAML_CONFIG['WHITE_THRESHOLD']
 LOWER_YELLOW = np.array(YAML_CONFIG['LOWER_YELLOW'], np.uint8)
-UPPER_YELLOW = np.array(YAML_CONFIG['UPPPER_YELLOW'], np.uint8)
+UPPER_YELLOW = np.array(YAML_CONFIG['UPPER_YELLOW'], np.uint8)
 LOWER_BLUE = np.array(YAML_CONFIG['LOWER_BLUE'], np.uint8)
-UPPER_BLUE = np.array(YAML_CONFIG['UPPPER_BLUE'], np.uint8)
+UPPER_BLUE = np.array(YAML_CONFIG['UPPER_BLUE'], np.uint8)
 
 class LaneNode:
 
