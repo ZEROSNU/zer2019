@@ -13,6 +13,7 @@ from core_msgs.msg import CenterLine
 from matplotlib import pyplot as plt
 import pdb
 from time import sleep # for debug 
+import yaml
 
 
 # Define Lane Coefficients Buffer
@@ -27,6 +28,10 @@ right_coeff_buffer = []
 BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
+
+CONFIG_FILE = '/home/snuzero/catkin_ws/src/zer2019/main_stream/perception/forward_camera/src/config_forward_cam.yaml'
+YAML_CONFIG = yaml.load(open(CONFIG_FILE))
+
 # Maximum offset pixels from previous lane polynomial
 LANE_ROI_OFFSET = (-50,50)
 
@@ -39,8 +44,12 @@ CANDIDATE_THRES = 4000
 
 # pixel Thresholds
 CENTER_LINE_THRES = 20000
-CROSSWALK_THRES = 120
-STOP_LINE_THRES = 300
+CROSSWALK_THRES = YAML_CONFIG['CROSSWALK_THRES']
+STOP_LINE_THRES = YAML_CONFIG['STOP_LINE_THRES']
+
+# Line Thresholds
+OVERLAP_THRES = 100 # determine two lines are overlapped (unit : 1cm / 1pixel)
+#CURVING_THRES = 
 
 # Loose lane ROI offset when first search
 ROBUST_SEARCH = True
@@ -56,24 +65,30 @@ LANE_WIDTH = 340
 NO_LANE_COUNT = 0
 
 # Debug Mode
-Z_DEBUG = False
+Z_DEBUG = YAML_CONFIG['Z_DEBUG']
 
 # Global parameters
 
 # Gaussian smoothing
-kernel_size = 3
+KERNEL_SIZE = 3
 
 # Canny Edge Detector
-low_threshold = 50
-high_threshold = 150
+LOW_THRESHOLD = 50
+HIGH_THRESHOLD = 150
 
 # Hough Transform
-rho = 2 # distance resolution in pixels of the Hough grid
-theta = 1 * np.pi/180 # angular resolution in radians of the Hough grid
-threshold = 15     # minimum number of votes (intersections in Hough grid cell)
-min_line_length = 10 #minimum number of pixels making up a line
-max_line_gap = 10    # maximum gap in pixels between connectable line segments
+RHO = 2 # distance resolution in pixels of the Hough grid
+THETA = 1 * np.pi / 180 # angular resolution in radians of the Hough grid
+THRESHOLD = 15     # minimum number of votes (intersections in Hough grid cell)
+MIN_LINE_LENGTH = 10 #minimum number of pixels making up a line
+MAX_LINE_GAP = 10    # maximum gap in pixels between connectable line segments
 
+# Color Thresholds
+WHITE_THRESHOLD = YAML_CONFIG['WHITE_THRESHOLD']
+LOWER_YELLOW = np.array(YAML_CONFIG['LOWER_YELLOW'], np.uint8)
+UPPER_YELLOW = np.array(YAML_CONFIG['UPPER_YELLOW'], np.uint8)
+LOWER_BLUE = np.array(YAML_CONFIG['LOWER_BLUE'], np.uint8)
+UPPER_BLUE = np.array(YAML_CONFIG['UPPER_BLUE'], np.uint8)
 
 class LaneNode:
 
@@ -103,17 +118,18 @@ class LaneNode:
         img_output,_,is_center_left,is_center_right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
         
-        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_NEAREST)
 
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
         dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
         map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
-        map_img = dst[:,:,0]
+        map_img = dst[:,:]
         map_img[map_img > 255] = 255
         send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
         
-        self.cl.is_center_left = is_center_left
+        #self.cl.is_center_left = is_center_left
+        self.cl.is_center_left = False
         self.cl.is_center_right = is_center_right
 
         if self.active:
@@ -128,6 +144,7 @@ class LaneNode:
 
         if Z_DEBUG:
             cv2.imshow('color_image',img_input)
+            cv2.imshow('output',map_img)
             cv2.waitKey(1)
 
 
@@ -277,12 +294,12 @@ def draw_line_with_color(image_in):
 
                 rsquared_prev1 = calculate_rsquared(x_vals, y_vals, left_prev_f1)
                 rsquared_prev2 = calculate_rsquared(x_vals, y_vals, left_prev_f2)
-                rsquared_current = calculate_rsquared(x_vals, y_vals, left_current_f)
+                rsquared_current_left = calculate_rsquared(x_vals, y_vals, left_current_f)
 
-                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_left)+10E-10
                 weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                 weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                weight_current = math.exp(rsquared_current) / exp_sum
+                weight_current = math.exp(rsquared_current_left) / exp_sum
 
                 coeff_left = weight_prev1 * left_coeff_buffer[1] + weight_prev2 * left_coeff_buffer[2] + weight_current * coeff_left
                 if len(right_x_candidates) > CANDIDATE_THRES:
@@ -295,12 +312,12 @@ def draw_line_with_color(image_in):
 
                     rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
                     rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
-                    rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
+                    rsquared_current_right = calculate_rsquared(x_vals, y_vals, right_current_f)
 
-                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_left)+10E-10
                     weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                     weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                    weight_current = math.exp(rsquared_current) / exp_sum
+                    weight_current = math.exp(rsquared_current_right) / exp_sum
 
                     coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
                 else:
@@ -319,12 +336,12 @@ def draw_line_with_color(image_in):
 
                 rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
                 rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
-                rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
+                rsquared_current_right = calculate_rsquared(x_vals, y_vals, right_current_f)
 
-                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_right)+10E-10
                 weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                 weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                weight_current = math.exp(rsquared_current) / exp_sum
+                weight_current = math.exp(rsquared_current_right) / exp_sum
 
                 coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
 
@@ -349,6 +366,42 @@ def draw_line_with_color(image_in):
                 is_center_left = True
             if (len(right_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[right_y_candidates,right_x_candidates])> 200) > 1000:
                 is_center_right = True
+
+            # Handle exceptions
+            # 1) two lines are overlapped
+            
+            if abs(coeff_left[2] - coeff_right[2]) < OVERLAP_THRES:
+                pdb.set_trace()
+                if coeff_left[2] < IMAGE_SIZE/2:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+                else:
+                    coeff_left = np.array(coeff_right)
+                    coeff_left[2] -= LANE_WIDTH
+            
+            # 2) two lines go to another direction
+            if coeff_left[0]*coeff_right[0] < 0:
+                # find better approximated line with rsquared value
+                if rsquared_current_left >= rsquared_current_right:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+                else:
+                    coeff_left = np.array(coeff_right)
+                    coeff_left[2] -= LANE_WIDTH
+
+            # 3) fix line location
+            if coeff_left[2] > IMAGE_SIZE/2 and coeff_right[2] > IMAGE_SIZE/2:
+                coeff_left = np.array(coeff_right)
+                coeff_left[2] -= LANE_WIDTH
+            if coeff_right[2] < IMAGE_SIZE/2 and coeff_left[2] < IMAGE_SIZE/2:
+                coeff_right = np.array(coeff_left)
+                coeff_right[2] += LANE_WIDTH
+            
+            # 4) when the line is too much curved
+            if abs(coeff_left[0]) > 0.001 or abs(coeff_right[0] > 0.001):
+                coeff_left = left_coeff_buffer[2]
+                coeff_right = np.array(coeff_left)
+                coeff_right[2] += LANE_WIDTH
 
             # Updating buffer            
             left_coeff_buffer[:2] = left_coeff_buffer[1:]
@@ -396,7 +449,7 @@ def draw_line_with_color(image_in):
         polypoints_stop[:,1] = t
         polypoints_stop[:,0] = stop_lines[0]
     
-        cv2.polylines(masked_img,np.int32([polypoints_stop]),False,255,5)
+        cv2.polylines(masked_img,np.int32([polypoints_stop]),False,stop_line_color,5)
 
     annotated_image = weighted_img(line_img, image_in)
     return masked_img, annotated_image, is_center_left, is_center_right
@@ -618,24 +671,25 @@ def weighted_img(img, initial_img, a=0.8, b=1., c=0.):
 
 def filter_colors(image):
     global CROSSWALK
+    global WHITE_THRESHOLD
+    global LOWER_YELLOW
+    global UPPER_YELLOW
+    global LOWER_BLUE
+    global UPPER_BLUE
+
     """
     Filter the image to include only yellow and white pixels
     """
     # Filter white pixels
-    white_threshold = 200
-    lower_white = np.array([white_threshold, white_threshold, white_threshold])
+    lower_white = np.array([WHITE_THRESHOLD, WHITE_THRESHOLD, WHITE_THRESHOLD])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(image, lower_white, upper_white)
     
     # Filter yellow and blue pixels
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower_yellow = np.array([5,20,100],np.uint8)
-    upper_yellow = np.array([15,255,255],np.uint8)
-    lower_blue = np.array([95,150,150],np.uint8)
-    upper_blue = np.array([110,255,255],np.uint8)
 
-    yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    yellow_mask = cv2.inRange(hsv, LOWER_YELLOW, UPPER_YELLOW)
+    blue_mask = cv2.inRange(hsv, LOWER_BLUE, UPPER_BLUE)
     
     # Eliminating small unnecessary dots (morphologyEx)
     #kernel = np.ones((3,3), np.uint8)
@@ -656,7 +710,6 @@ def filter_colors(image):
         right_y = int(right_coeff_buffer[2][2])
         
         white_vals = sum(white_mask[left_y:right_y,:]>0)
-        
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)
     
@@ -668,19 +721,21 @@ def filter_colors(image):
         
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)#pdb.set_trace()
+
     CROSSWALK = False
+
     if len(stop_lines[0]) > 5:
         print("STOPLINE!")
+        image2[:,stop_lines[0][0]:stop_lines[0][-1]] = [0,0,0]
+    
     else:
         if len(crosswalk_lines[0]) > 5:
             CROSSWALK = True
+            image2[:,crosswalk_lines[0][0]:crosswalk_lines[0][-1]] = [0,0,0]
         else:
             CROSSWALK = False
     
     cv2.imshow('color_filtered', image2)
-    image2[:,stop_lines[0]] = [0,0,0]
-    image2[:,crosswalk_lines[0]] = [0,0,0]
-    cv2.imshow('after',image2)
 
     return image2, stop_lines[0]
 
@@ -693,13 +748,13 @@ def annotate_image_array(image_in):
     gray = grayscale(image)
 
     # Apply Gaussian smoothing
-    blur_gray = gaussian_blur(gray, kernel_size)
+    blur_gray = gaussian_blur(gray, KERNEL_SIZE)
     
     # Apply Canny Edge Detector
-    edges = canny(blur_gray, low_threshold, high_threshold)
+    edges = canny(blur_gray, LOW_THRESHOLD, HIGH_THRESHOLD)
 
     # Run Hough on edge detected image
-    line_image = hough_lines(edges, rho, theta, threshold, min_line_length, max_line_gap)
+    line_image = hough_lines(edges, RHO, THETA, THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP)
     #line_image = draw_line_with_color(binary_warped)
     # Draw lane lines on the original image
     annotated_image = weighted_img(line_image, image_in)
