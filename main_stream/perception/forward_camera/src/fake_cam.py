@@ -27,7 +27,7 @@ class FakeCam:
     '''
     def send_image(self):
         rate = rospy.Rate(20)
-        path = rospy.get_param('/data_path/bird/')
+        path = rospy.get_param('/data_path') + 'bird/'
         #path = '/home/kimsangmin/ZERO_VISION/bird/3/'
         ext = '.jpg'
         num_of_files = 600

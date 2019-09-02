@@ -29,7 +29,7 @@ BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
 
-CONFIG_FILE = '/home/kimsangmin/catkin_ws/src/zer2019/main_stream/perception/forward_camera/src/config_forward_cam.yaml'
+CONFIG_FILE = '/home/snuzero/catkin_ws/src/zer2019/main_stream/perception/forward_camera/src/config_forward_cam.yaml'
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
@@ -128,7 +128,8 @@ class LaneNode:
         send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
         
-        self.cl.is_center_left = is_center_left
+        #self.cl.is_center_left = is_center_left
+        self.cl.is_center_left = False
         self.cl.is_center_right = is_center_right
 
         if self.active:
