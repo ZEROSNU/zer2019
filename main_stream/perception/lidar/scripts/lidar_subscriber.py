@@ -129,7 +129,6 @@ def generate_ray_casting_grid_map(r):
 precast = precasting()
 
 if __name__ == "__main__":
-    global isactive
     '''
     code for activate and deactivate the node
     '''

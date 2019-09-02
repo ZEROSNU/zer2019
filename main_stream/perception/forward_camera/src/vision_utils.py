@@ -45,9 +45,11 @@ def calculate_rsquared(x, y, f):
 
 
 if __name__ == "__main__":
+    cam = cv2.VideoCapture(2)
     cv2.namedWindow('img')
     cv2.setMouseCallback('img',get_hsv_color)
-    img = cv2.imread('/home/kimsangmin/ZERO_VISION/bird/7/192.jpg')
+    #img = cv2.imread('/home/kimsangmin/ZERO_VISION/bird/7/192.jpg')
+    _, img = cam.read()
     hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
     blue = findColor(hsv, lower_blue, upper_blue)
     yellow = findColor(hsv, lower_yellow, upper_yellow)
