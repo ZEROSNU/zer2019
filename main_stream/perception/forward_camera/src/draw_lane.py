@@ -4,8 +4,6 @@ import rospy
 import cv2
 import math
 import numpy as numpy
-import yaml
-import os
 from std_msgs.msg import String
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
@@ -13,7 +11,9 @@ from vision_utils import *
 from core_msgs.msg import ActiveNode
 from core_msgs.msg import CenterLine
 from matplotlib import pyplot as plt
+import pdb
 from time import sleep # for debug 
+import yaml
 
 
 # Define Lane Coefficients Buffer
@@ -29,7 +29,7 @@ BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
 
-CONFIG_FILE = os.path.join(os.getcwd(), 'config_forward_cam.yaml')
+CONFIG_FILE = '/home/kimsangmin/catkin_ws/src/zer2019/main_stream/perception/forward_camera/src/config_forward_cam.yaml'
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
@@ -46,6 +46,10 @@ CANDIDATE_THRES = 4000
 CENTER_LINE_THRES = 20000
 CROSSWALK_THRES = YAML_CONFIG['CROSSWALK_THRES']
 STOP_LINE_THRES = YAML_CONFIG['STOP_LINE_THRES']
+
+# Line Thresholds
+OVERLAP_THRES = 100 # determine two lines are overlapped (unit : 1cm / 1pixel)
+#CURVING_THRES = 
 
 # Loose lane ROI offset when first search
 ROBUST_SEARCH = True
@@ -114,12 +118,12 @@ class LaneNode:
         img_output,_,is_center_left,is_center_right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
         
-        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_AREA)
+        resized = cv2.resize(img_output, (MAP_SIZE,MAP_SIZE), interpolation=cv2.INTER_NEAREST)
 
         matrix = cv2.getRotationMatrix2D((MAP_SIZE/2,MAP_SIZE/2),90,1)
         dst = cv2.warpAffine(resized,matrix,(MAP_SIZE,MAP_SIZE))
         map_img = np.zeros((MAP_SIZE,MAP_SIZE),np.int8)
-        map_img = dst[:,:,0]
+        map_img = dst[:,:]
         map_img[map_img > 255] = 255
         send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
@@ -139,6 +143,7 @@ class LaneNode:
 
         if Z_DEBUG:
             cv2.imshow('color_image',img_input)
+            cv2.imshow('output',map_img)
             cv2.waitKey(1)
 
 
@@ -288,12 +293,12 @@ def draw_line_with_color(image_in):
 
                 rsquared_prev1 = calculate_rsquared(x_vals, y_vals, left_prev_f1)
                 rsquared_prev2 = calculate_rsquared(x_vals, y_vals, left_prev_f2)
-                rsquared_current = calculate_rsquared(x_vals, y_vals, left_current_f)
+                rsquared_current_left = calculate_rsquared(x_vals, y_vals, left_current_f)
 
-                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_left)+10E-10
                 weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                 weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                weight_current = math.exp(rsquared_current) / exp_sum
+                weight_current = math.exp(rsquared_current_left) / exp_sum
 
                 coeff_left = weight_prev1 * left_coeff_buffer[1] + weight_prev2 * left_coeff_buffer[2] + weight_current * coeff_left
                 if len(right_x_candidates) > CANDIDATE_THRES:
@@ -306,12 +311,12 @@ def draw_line_with_color(image_in):
 
                     rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
                     rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
-                    rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
+                    rsquared_current_right = calculate_rsquared(x_vals, y_vals, right_current_f)
 
-                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_left)+10E-10
                     weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                     weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                    weight_current = math.exp(rsquared_current) / exp_sum
+                    weight_current = math.exp(rsquared_current_right) / exp_sum
 
                     coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
                 else:
@@ -330,12 +335,12 @@ def draw_line_with_color(image_in):
 
                 rsquared_prev1 = calculate_rsquared(x_vals, y_vals, right_prev_f1)
                 rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
-                rsquared_current = calculate_rsquared(x_vals, y_vals, right_current_f)
+                rsquared_current_right = calculate_rsquared(x_vals, y_vals, right_current_f)
 
-                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current)+10E-10
+                exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_right)+10E-10
                 weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                 weight_prev2 = math.exp(rsquared_prev2) / exp_sum
-                weight_current = math.exp(rsquared_current) / exp_sum
+                weight_current = math.exp(rsquared_current_right) / exp_sum
 
                 coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
 
@@ -360,6 +365,42 @@ def draw_line_with_color(image_in):
                 is_center_left = True
             if (len(right_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[right_y_candidates,right_x_candidates])> 200) > 1000:
                 is_center_right = True
+
+            # Handle exceptions
+            # 1) two lines are overlapped
+            
+            if abs(coeff_left[2] - coeff_right[2]) < OVERLAP_THRES:
+                pdb.set_trace()
+                if coeff_left[2] < IMAGE_SIZE/2:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+                else:
+                    coeff_left = np.array(coeff_right)
+                    coeff_left[2] -= LANE_WIDTH
+            
+            # 2) two lines go to another direction
+            if coeff_left[0]*coeff_right[0] < 0:
+                # find better approximated line with rsquared value
+                if rsquared_current_left >= rsquared_current_right:
+                    coeff_right = np.array(coeff_left)
+                    coeff_right[2] += LANE_WIDTH
+                else:
+                    coeff_left = np.array(coeff_right)
+                    coeff_left[2] -= LANE_WIDTH
+
+            # 3) fix line location
+            if coeff_left[2] > IMAGE_SIZE/2 and coeff_right[2] > IMAGE_SIZE/2:
+                coeff_left = np.array(coeff_right)
+                coeff_left[2] -= LANE_WIDTH
+            if coeff_right[2] < IMAGE_SIZE/2 and coeff_left[2] < IMAGE_SIZE/2:
+                coeff_right = np.array(coeff_left)
+                coeff_right[2] += LANE_WIDTH
+            
+            # 4) when the line is too much curved
+            if abs(coeff_left[0]) > 0.001 or abs(coeff_right[0] > 0.001):
+                coeff_left = left_coeff_buffer[2]
+                coeff_right = np.array(coeff_left)
+                coeff_right[2] += LANE_WIDTH
 
             # Updating buffer            
             left_coeff_buffer[:2] = left_coeff_buffer[1:]
@@ -407,7 +448,7 @@ def draw_line_with_color(image_in):
         polypoints_stop[:,1] = t
         polypoints_stop[:,0] = stop_lines[0]
     
-        cv2.polylines(masked_img,np.int32([polypoints_stop]),False,255,5)
+        cv2.polylines(masked_img,np.int32([polypoints_stop]),False,stop_line_color,5)
 
     annotated_image = weighted_img(line_img, image_in)
     return masked_img, annotated_image, is_center_left, is_center_right
@@ -668,7 +709,6 @@ def filter_colors(image):
         right_y = int(right_coeff_buffer[2][2])
         
         white_vals = sum(white_mask[left_y:right_y,:]>0)
-        
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)
     
@@ -685,16 +725,16 @@ def filter_colors(image):
 
     if len(stop_lines[0]) > 5:
         print("STOPLINE!")
+        image2[:,stop_lines[0][0]:stop_lines[0][-1]] = [0,0,0]
+    
     else:
         if len(crosswalk_lines[0]) > 5:
             CROSSWALK = True
+            image2[:,crosswalk_lines[0][0]:crosswalk_lines[0][-1]] = [0,0,0]
         else:
             CROSSWALK = False
     
     cv2.imshow('color_filtered', image2)
-    image2[:,stop_lines[0]] = [0,0,0]
-    image2[:,crosswalk_lines[0]] = [0,0,0]
-    cv2.imshow('after',image2)
 
     return image2, stop_lines[0]
 
