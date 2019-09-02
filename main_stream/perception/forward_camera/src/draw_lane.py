@@ -27,6 +27,10 @@ right_coeff_buffer = []
 BASIC SETTINGS
 ------------------------------------------------------------------------
 '''
+
+CONFIG_FILE = 'config_forward_cam.yaml'
+YAML_CONFIG = yaml.load(open(CONFIG_FILE))
+
 # Maximum offset pixels from previous lane polynomial
 LANE_ROI_OFFSET = (-50,50)
 
@@ -39,8 +43,8 @@ CANDIDATE_THRES = 4000
 
 # pixel Thresholds
 CENTER_LINE_THRES = 20000
-CROSSWALK_THRES = 120
-STOP_LINE_THRES = 300
+CROSSWALK_THRES = YAML_CONFIG['CROSSWALK_THRES']
+STOP_LINE_THRES = YAML_CONFIG['STOP_LINE_THRES']
 
 # Loose lane ROI offset when first search
 ROBUST_SEARCH = True
@@ -56,24 +60,30 @@ LANE_WIDTH = 340
 NO_LANE_COUNT = 0
 
 # Debug Mode
-Z_DEBUG = False
+Z_DEBUG = YAML_CONFIG['Z_DEBUG']
 
 # Global parameters
 
 # Gaussian smoothing
-kernel_size = 3
+KERNEL_SIZE = 3
 
 # Canny Edge Detector
-low_threshold = 50
-high_threshold = 150
+LOW_THRESHOLD = 50
+HIGH_THRESHOLD = 150
 
 # Hough Transform
-rho = 2 # distance resolution in pixels of the Hough grid
-theta = 1 * np.pi/180 # angular resolution in radians of the Hough grid
-threshold = 15     # minimum number of votes (intersections in Hough grid cell)
-min_line_length = 10 #minimum number of pixels making up a line
-max_line_gap = 10    # maximum gap in pixels between connectable line segments
+RHO = 2 # distance resolution in pixels of the Hough grid
+THETA = 1 * np.pi / 180 # angular resolution in radians of the Hough grid
+THRESHOLD = 15     # minimum number of votes (intersections in Hough grid cell)
+MIN_LINE_LENGTH = 10 #minimum number of pixels making up a line
+MAX_LINE_GAP = 10    # maximum gap in pixels between connectable line segments
 
+# Color Thresholds
+WHITE_THRESHOLD = YAML_CONFIG['WHITE_THRESHOLD']
+LOWER_YELLOW = np.array(YAML_CONFIG['LOWER_YELLOW'], np.uint8)
+UPPER_YELLOW = np.array(YAML_CONFIG['UPPPER_YELLOW'], np.uint8)
+LOWER_BLUE = np.array(YAML_CONFIG['LOWER_BLUE'], np.uint8)
+UPPER_BLUE = np.array(YAML_CONFIG['UPPPER_BLUE'], np.uint8)
 
 class LaneNode:
 
@@ -618,24 +628,25 @@ def weighted_img(img, initial_img, a=0.8, b=1., c=0.):
 
 def filter_colors(image):
     global CROSSWALK
+    global WHITE_THRESHOLD
+    global LOWER_YELLOW
+    global UPPER_YELLOW
+    global LOWER_BLUE
+    global UPPER_BLUE
+
     """
     Filter the image to include only yellow and white pixels
     """
     # Filter white pixels
-    white_threshold = 200
-    lower_white = np.array([white_threshold, white_threshold, white_threshold])
+    lower_white = np.array([WHITE_THRESHOLD, WHITE_THRESHOLD, WHITE_THRESHOLD])
     upper_white = np.array([255, 255, 255])
     white_mask = cv2.inRange(image, lower_white, upper_white)
     
     # Filter yellow and blue pixels
     hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
-    lower_yellow = np.array([5,20,100],np.uint8)
-    upper_yellow = np.array([15,255,255],np.uint8)
-    lower_blue = np.array([95,150,150],np.uint8)
-    upper_blue = np.array([110,255,255],np.uint8)
 
-    yellow_mask = cv2.inRange(hsv, lower_yellow, upper_yellow)
-    blue_mask = cv2.inRange(hsv, lower_blue, upper_blue)
+    yellow_mask = cv2.inRange(hsv, LOWER_YELLOW, UPPER_YELLOW)
+    blue_mask = cv2.inRange(hsv, LOWER_BLUE, UPPER_BLUE)
     
     # Eliminating small unnecessary dots (morphologyEx)
     #kernel = np.ones((3,3), np.uint8)
@@ -668,7 +679,9 @@ def filter_colors(image):
         
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)#pdb.set_trace()
+
     CROSSWALK = False
+
     if len(stop_lines[0]) > 5:
         print("STOPLINE!")
     else:
@@ -693,13 +706,13 @@ def annotate_image_array(image_in):
     gray = grayscale(image)
 
     # Apply Gaussian smoothing
-    blur_gray = gaussian_blur(gray, kernel_size)
+    blur_gray = gaussian_blur(gray, KERNEL_SIZE)
     
     # Apply Canny Edge Detector
-    edges = canny(blur_gray, low_threshold, high_threshold)
+    edges = canny(blur_gray, LOW_THRESHOLD, HIGH_THRESHOLD)
 
     # Run Hough on edge detected image
-    line_image = hough_lines(edges, rho, theta, threshold, min_line_length, max_line_gap)
+    line_image = hough_lines(edges, RHO, THETA, THRESHOLD, MIN_LINE_LENGTH, MAX_LINE_GAP)
     #line_image = draw_line_with_color(binary_warped)
     # Draw lane lines on the original image
     annotated_image = weighted_img(line_image, image_in)
