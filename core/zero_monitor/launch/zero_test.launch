@@ -22,7 +22,7 @@
   </group>
 
   <group ns = "raw_local_map">
-    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" output = "screen"/>
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" />
   </group>
 
   <!--include file="$(find hector_slam_launch)/launch/tutorial.launch"/-->
@@ -50,7 +50,7 @@
 
   <group ns = "planner">
     <node name = "dorrt" pkg = "planner" type = "dorrt"/>
-    <node name = "astar" pkg = "planner" type = "astar"/>
+    <node name = "astar" pkg = "planner" type = "astar" output = "screen"/>
   </group>
 
   <group ns = "path_tracker">

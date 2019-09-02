@@ -1,4 +1,4 @@
 <launch>
   <node name = "control_manual" type = "control_manual.py" pkg = "serial_communicator"/>
-  <node name = "serial_com" type  = "serial_com.py" pkg = "serial_communicator"/>
+  <node name = "serial_com" type  = "serial_com.py" pkg = "serial_communicator" output = "screen"/>
 </launch>
