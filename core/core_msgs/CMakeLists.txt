@@ -20,6 +20,7 @@ add_message_files( DIRECTORY msg
   ImuSpeed.msg
   ActiveNode.msg
   CenterLine.msg
+  Location.msg
 )
 
 generate_messages(DEPENDENCIES   geometry_msgs  sensor_msgs   std_msgs )
