@@ -4,4 +4,4 @@ sudo apt install ros-kinetic-async-comm
 pip install pyforms-gui --user
 pip install pyyaml
 
-chmod +x cam_run.sh cam_test.sh lidar_run.sh
+chmod +x cam_run.sh cam_test.sh lidar_run.sh ./main_stream/perception/forward_camera/src/fixcam.sh

@@ -45,13 +45,17 @@
 
   * Check port number (1 = left_cam, 2 = front_cam, 3 = wide_cam, 4 = right_cam)
 
+  * Set camera
+
+    `$ ./main_stream/perception/forward_camera/src/fixcam.sh`
+
   * test
 
     `$ ./cam_test.sh`
 
   * real-time input
-
+  
     `$ ./cam_run.sh`
-
+  
   
 
