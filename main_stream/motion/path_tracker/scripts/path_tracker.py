@@ -83,11 +83,13 @@ class tracker:
                                 rad_angle = math.pi/2. + theta
 
                         #calculate quaternion rotate
-                        q = np.array([[math.cos(rad_angle/2.), 0., 0., math.sin(rad_angle/2.)]])
-                        q_inv = np.array([[math.cos(rad_angle/2.)],
+                        c = math.cos(rad_angle/2.)
+                        s = math.sin(rad_angle/2.)
+                        q = np.array([[c, 0., 0., s]])
+                        q_inv = np.array([[c],
                                          [0.],
                                          [0.],
-                                         [-math.sin(rad_angle/2.)]])
+                                         [s]])
 
                         # Update map
                         for i in self.current_path.poses:
@@ -95,15 +97,16 @@ class tracker:
                                 i.pose.position.x = i.pose.position.x - shift_x
                                 i.pose.position.y = i.pose.position.y - shift_y
                                 #update orientation   (Check is needed !!!!!)
-                                v = np.array([[0],
+ 
+                                v = np.array([[i.pose.position.w],
                                              [i.pose.position.x],
                                              [i.pose.position.y],
                                              [i.pose.position.z]])
                                 qv = np.dot(q,v)
                                 v = qv * q_inv
-                                i.pose.orientation.x = v[1][0]
-                                i.pose.orientation.y = v[2][0]
-                                i.pose.orientation.z = v[3][0]
+                                i.pose.orientation.x = v[0][1]
+                                i.pose.orientation.y = v[0][2]
+                                i.pose.orientation.z = v[0][3]
                                 i.pose.orientation.w = v[0][0]
 
                         return self.ESTIMATE_TRACKING
