@@ -1,7 +1,7 @@
 //#define USE_USBCON
 #include <SoftwareSerial.h>
 #include <ros.h>
-#include <beginner_tutorials/location.h>
+#include <core_msgs/Location.h>
 
 SoftwareSerial gpsSerial(10,11);
 
@@ -10,7 +10,7 @@ String str = "";
 String targetStr = "GPGGA";
 
 ros::NodeHandle  nh;
-beginner_tutorials::location location;
+core_msgs::Location location;
 ros::Publisher location_msg("location_msg", &location);
 
 void setup()
