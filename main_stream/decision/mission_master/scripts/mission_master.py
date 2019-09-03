@@ -69,6 +69,8 @@ def mainloop():
                         motion.motion_state="FORWARD_MOTION"
                 else:
                     motion.motion_state="FORWARD_MOTION"
+        elif taskstate.mission=="INTERSECTION_LEFT" and missionstate.mission_state=="JUST_LEFT":
+            motion.motion_state="LEFT_MOTION"
         elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="INTERSECTION_LEFT":
             if lightstate.light_found:
                 if not lightstate.left:
@@ -84,7 +86,7 @@ def mainloop():
                 motion.motion_state="RIGHT_MOTION"
         elif taskstate.mission_state=="OBSTACLE_STATIC" and missionstate.mission_state=="OBSTACLE_STATIC":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="OBSTACLE_DYNAMIC" and missionstate.mission_state=="OBSTACLE_DYNAMIC":
+        elif taskstate.mission_state=="OBSTACLE_SUDDEN" and missionstate.mission_state=="OBSTACLE_SUDDEN":
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="CROSSWALK" and missionstate.mission_state=="CROSSWALK":
             motion.motion_state="HALT"
