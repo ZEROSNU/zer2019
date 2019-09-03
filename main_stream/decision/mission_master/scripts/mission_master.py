@@ -96,9 +96,7 @@ def mainloop():
             motion.motion_state="PARKING"
             if slam_mask==True:
                 slam_mask=False
-                slam_launch.start()
-        else:
-            motion.motion_state="HALT"               
+                slam_launch.start() 
 
         i = i+1
         if mainloop.active :
