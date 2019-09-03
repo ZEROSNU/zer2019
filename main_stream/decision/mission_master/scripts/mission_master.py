@@ -88,7 +88,7 @@ def mainloop():
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="OBSTACLE_SUDDEN" and missionstate.mission_state=="OBSTACLE_SUDDEN":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="CROSSWALK" and missionstate.mission_state=="CROSSWALK":
+        elif taskstate.mission_state=="CROSSWALK":
             motion.motion_state="HALT"
         elif taskstate.mission_state=="SCHOOL_ZONE" and missionstate.mission_state=="SCHOOL_ZONE":
             motion.motion_state="FORWARD_MOTION_SLOW"
