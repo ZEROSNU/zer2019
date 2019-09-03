@@ -84,7 +84,7 @@ def mainloop():
                 motion.motion_state="RIGHT_MOTION"
         elif taskstate.mission_state=="OBSTACLE_STATIC" and missionstate.mission_state=="OBSTACLE_STATIC":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="OBSTACLE_DYNAMIC" and missionstate.mission_state=="DYNAMIC":
+        elif taskstate.mission_state=="OBSTACLE_DYNAMIC" and missionstate.mission_state=="OBSTACLE_DYNAMIC":
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="CROSSWALK" and missionstate.mission_state=="CROSSWALK":
             motion.motion_state="HALT"
