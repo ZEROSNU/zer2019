@@ -7,6 +7,7 @@ import numpy.ma as m
 import math
 import sys
 import time
+import tf_conversions
 
 from core_msgs.msg import Control
 from nav_msgs.msg import Path
@@ -49,6 +50,7 @@ class tracker:
                 self.motion_state_buff_size = 20
 
                 self.curvature = Curvature()
+                self.curvature.gear = 1
                 self.curvature_write = 0
                 self.curvature_count = 0
                 self.curvature_buff = []
@@ -56,7 +58,10 @@ class tracker:
                 self.curvature_buff_size = 200
 
                 self.temp_control_mode = 0
-            
+
+                # Variable for parking
+                self.is_PARKING = False
+                self.init_parking_path = Path()
 
         # Define functions
         def Path_update(self):
@@ -67,6 +72,15 @@ class tracker:
                 except:
                         print("Path_update failed.")
                         return self.EMERGENCY_BRAKE
+
+        def Path_parsing(self):
+                try:
+                        diff = []
+                       for pose in self.current_path.poses:
+                               pose.pose.position.x
+                       return  
+                except:
+                        print("Path parsing failed.")
 
         def Path_estimate(self, initialize_time):       # TODO: Consider motion_state_buff[-1], it was parking or not?
                 try:
@@ -172,6 +186,7 @@ class tracker:
                         self.curvature = copy.deepcopy(self.curvature_buff[-1])
                 else:
                         self.curvature = Curvature()
+                        self.curvature.gear = 1
 
                 # Update velocity level
                 if self.update_velocity_level == True:
@@ -190,6 +205,12 @@ class tracker:
                         pass
                 self.update_motion_state = False
 
+                # Decide is parking state
+                if self.motion_state == 'PARKING':
+                        self.is_PARKING = True
+                else:
+                        self.is_PARKING = False
+
                 # Initialize time
                 if self.first_path == True:
                     initialize_time = self.curvature_time_buff[-1]
@@ -201,6 +222,8 @@ class tracker:
                 '''
                 if self.update_path == True:
                         temp_control_mode = self.Path_update()
+                        if self.is_PARKING == True:
+                                temp_control_mode = self.Path_parsing()
                 else:
                         if self.first_path == True:
                                 temp_control_mode = self.Path_estimate(initialize_time)
@@ -241,7 +264,7 @@ class tracker:
 main_track = tracker()
 
 # Some operation functions
-def rotaiton_transform(x, y, theta):
+def rotation_transform(x, y, theta):
         new_x = math.cos(theta) * x - math.sin(theta) * y
         new_y = math.sin(theta) * x + math.cos(theta) * y
         return new_x, new_y
