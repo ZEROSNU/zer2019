@@ -1,4 +1,5 @@
 <html>
+
     <head>
         <title>Google Map</title>
         <meta name="viewport" content="initial-scale=1.0">
@@ -10,29 +11,31 @@
           }
         </style>
     </head>
-    <body>
-        <form id="form" onsubmit="return false;">
-            <input style=position:absolute;top:80%;left:5%;width:40%; type="text" id="userInput">
-            <input style=position:absolute;top:50%;left:5%;width:40%; type="submit"    onclick="name()">
-        </form>
 
-        <div id="latclicked"></div>
-        <div id="longclicked"></div>
-        <div id="latmoved"></div>
-        <div id="longmoved"></div>
+    <body>
+        <input type="text" id="label">
+
         <div style="padding:10px">
             <div id="map"></div>
         </div>
+        <button onclick="save()">Save</button>
 
         <script type="text/javascript">
         var map;
         var latitude = 37.240140; // YOUR LATITUDE VALUE
         var longitude = 126.773742; // YOUR LONGITUDE VALUE
+        var label
 
-        function name(){
-            var input = document.getElementById("userInput");
-            alert(input);
+        var markers = []
+
+        function save() {
+            console.log(markers)
         }
+
+        function getLabel() {
+          label = document.getElementById("label").value;
+        }
+
 
         function initMap() {
             //var geoloccontrol = new klokantech.GeolocationControl(map, mapMaxZoom);
@@ -50,17 +53,9 @@
                 document.getElementById('longclicked').innerHTML =  event.latLng.lng();
             });
             
-            // Update lat/long value of div when you move the mouse over the map
-            google.maps.event.addListener(map,'mousemove',function(event) {
-                document.getElementById('latmoved').innerHTML = event.latLng.lat();
-                document.getElementById('longmoved').innerHTML = event.latLng.lng();
-            });
-                    
-            var marker = new google.maps.Marker({
+           var marker = new google.maps.Marker({
               position: myLatLng,
               map: map,
-              //title: 'Hello World'
-              
               // setting latitude & longitude as title of the marker
               // title is shown when you hover over the marker
               title: latitude + ', ' + longitude
@@ -74,12 +69,18 @@
             
             // Create new marker on double click event on the map
             google.maps.event.addListener(map,'dblclick',function(event) {
+                getLabel()
+                lat = event.latLng.lat()
+                lng = event.latLng.lng()
                 var marker = new google.maps.Marker({
                   position: event.latLng,
                   map: map,
-                  title: event.latLng.lat()+', '+event.latLng.lng()
+                    title: lat + ', ' + lng,
+                  // title: event.latLng.lat()+', '+event.latLng.lng(),
+                  label: label,
                 });
-                
+                markers.push([label, lat, lng]);
+
                 // Update lat/long value of div when the marker is clicked
                 marker.addListener('click', function() {
                   document.getElementById('latclicked').innerHTML = event.latLng.lat();
@@ -87,14 +88,7 @@
                 });
             });
             
-            // Create new marker on single click event on the map
-            /*google.maps.event.addListener(map,'click',function(event) {
-                var marker = new google.maps.Marker({
-                  position: event.latLng,
-                  map: map,
-                  title: event.latLng.lat()+', '+event.latLng.lng()
-                });
-            });*/
+
         }
         </script>
         <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBoe_6iREz2t7Sk7qxAMq6uZo82YS_iZ0g&callback=initMap"
