@@ -51,7 +51,7 @@ def mainloop():
     while not rospy.is_shutdown():
         motion.header.stamp = rospy.Time.now()
         motion.header.seq = i
-        if taskstate.mission_state!="PARKING" or missionstate.mission_state!="PARKING":
+        if taskstate.mission_state!="PARKING" and missionstate.mission_state!="PARKING":
             if slam_mask==False:
                 slam_mask=True
                 slam_launch.shutdown()
