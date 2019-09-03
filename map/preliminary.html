@@ -8,7 +8,7 @@
 </div>
 <script type="text/javascript">
   var locations = [
-    ['center', 37.240140, 126.773742]
+    ['1' , 37.239764597518956 , 126.77362450449334]
 
 ];
     var map = new google.maps.Map(document.getElementById('map'), {
@@ -21,7 +21,8 @@
     for (i = 0; i < locations.length; i++) {
       marker = new google.maps.Marker({
         position: new google.maps.LatLng(locations[i][1], locations[i][2]),
-        map: map
+        map: map,
+        label: locations[i][0]
       });
       google.maps.event.addListener(marker, 'click', (function(marker, i) {
         return function() {
