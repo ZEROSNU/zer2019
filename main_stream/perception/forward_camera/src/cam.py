@@ -107,7 +107,7 @@ def imagePublisher():
 
 
 if __name__ == '__main__':
-    FRAME = 10
+    FRAME = 8
     try:
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')

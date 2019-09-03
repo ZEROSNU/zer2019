@@ -348,7 +348,7 @@ class Topic(BaseWidget) :
             img = 255-self._data
             img = cv2.flip(img,0)
             img = np.expand_dims(img, axis = 2)
-            self._img = np.concatenate((img, img, img), axis = 2)
+            self._img = np.concatenate((img, img, img), axis = 2).astype(np.uint8)
         elif self.dform == Path :
             self._img_path_type.max = len(self._poses)
             img = np.zeros([self._height, self._width, 3])
@@ -454,7 +454,6 @@ class Topic(BaseWidget) :
                 pubData.yellow = self._yellow.value
                 pubData.green = self._green.value
                 pubData.left = self._left.value
-                self.pub.publish(pubData)
                 self.pub.publish(pubData)
             elif self.dform == MotionState :
                 head.frame_id = self._header_frame_id.value
@@ -663,6 +662,7 @@ class Topic(BaseWidget) :
             self._setStateButton.value = self.__setState
             self.formset[1].append(('_setState', '_setStateButton'))
         elif self.dform == OccupancyGrid :
+            self._header_frame_id.value = 'car_frame'
             self._info_map_load_time_secs = ControlNumber('info.map_load_time.secs')
             self._info_map_load_time_secs.max = 1000000000000
             self._info_map_load_time_nsecs = ControlNumber('nsecs')
@@ -670,15 +670,19 @@ class Topic(BaseWidget) :
             self.formset[1].append(('_info_map_load_time_secs', '_info_map_load_time_nsecs'))
             self._info_resolution = ControlNumber('info.map_resolution')
             self._info_resolution.decimals = 3
+            self._info_resolution.value = 0.03
             self.formset[1].append('_info_resolution')
             self._info_width = ControlNumber('info.width')
             self._info_width.max = 10000
+            self._info_width.value = 200
             self.formset[1].append('_info_width')
             self._info_height = ControlNumber('info.height')
             self._info_height.max = 10000
+            self._info_height.value = 200
             self.formset[1].append('_info_height')
             self._info_origin_position_x = ControlNumber('info.origin.position.x:')
             self._info_origin_position_x.min = -100
+            self._info_origin_position_x.value = -3
             self._info_origin_position_x.decimals = 3
             self._info_origin_position_y = ControlNumber('y:')
             self._info_origin_position_y.min = -100
@@ -698,11 +702,13 @@ class Topic(BaseWidget) :
             self._info_origin_orientation_z.decimals = 3
             self._info_origin_orientation_w = ControlNumber('w:')
             self._info_origin_orientation_w.min = -100
+            self._info_origin_orientation_w.value = 1
             self._info_origin_orientation_w.decimals = 3
             self.formset[1].append( ('_info_origin_orientation_x', '_info_origin_orientation_y', '_info_origin_orientation_z', '_info_origin_orientation_w') )
-            self._data = None
+            self._data = np.full([int(self._info_height.value),int(self._info_width.value)],0, dtype = np.uint8)
             self.formset[1].append('drawing tools')
-            self._img = np.zeros([200,200])
+            self._img = np.zeros([200,200,3], dtype = np.uint8)
+            self.__dataToImg()
             self._img_brush_type = ControlCombo('brush')
             self._img_brush_type.add_item('brush', 'brush')
             self._img_brush_type.add_item('eraser', 'eraser')
@@ -712,11 +718,13 @@ class Topic(BaseWidget) :
             self._img_brush_radius.min = 1
             self.formset[1].append('_img_brush_radius')
         elif self.dform == PoseStamped :
+            self._header_frame_id.value = "car_frame"
             self._pose_position_x = ControlNumber('pose.position.x:')
             self._pose_position_x.min = -100
             self._pose_position_x.decimals = 3
             self._pose_position_y = ControlNumber('y:')
             self._pose_position_y.min = -100
+            self._pose_position_y.value = 5
             self._pose_position_y.decimals = 3
             self._pose_position_z = ControlNumber('z:')
             self._pose_position_z.min = -100
@@ -729,10 +737,12 @@ class Topic(BaseWidget) :
             self._pose_orientation_y.min = -100
             self._pose_orientation_y.decimals = 3
             self._pose_orientation_z = ControlNumber('z:')
+            self._pose_orientation_z.value = 1
             self._pose_orientation_z.min = -100
             self._pose_orientation_z.decimals = 3
             self._pose_orientation_w = ControlNumber('w:')
             self._pose_orientation_w.min = -100
+            self._pose_orientation_w.value = 1
             self._pose_orientation_w.decimals = 3
             self.formset[1].append( ('_pose_orientation_x', '_pose_orientation_y', '_pose_orientation_z', '_pose_orientation_w') )
         elif self.dform == PoseWithCovarianceStamped :
@@ -1074,26 +1084,26 @@ class MainMonitor(BaseWidget) :
         
     def __getTFMatrix(self, child_frame, mother_frame) :
         matrix = np.zeros([3,3])
-        print 'mother : ' + mother_frame
-        print 'child : ' + child_frame
+        #print 'mother : ' + mother_frame
+        #print 'child : ' + child_frame
         if child_frame == mother_frame :
             matrix = np.identity(3)
-        print Topic.names['/tf']._data.keys()
+        #print Topic.names['/tf']._data.keys()
         if child_frame in Topic.names['/tf']._data.keys() :
-            print 'child frame in first keys'
-            print Topic.names['/tf']._data[child_frame].keys()
+        #    print 'child frame in first keys'
+        #    print Topic.names['/tf']._data[child_frame].keys()
             if mother_frame in Topic.names['/tf']._data[child_frame].keys() :
-                print 'child frame in second keys'
+        #        print 'child frame in second keys'
                 tf = Topic.names['/tf']._data[child_frame][mother_frame]
                 yaw = 2 * np.arctan2(tf.transform.rotation.z, tf.transform.rotation.w)
                 matrix = np.array([ [np.cos(yaw), -np.sin(yaw), tf.transform.translation.x],
                                     [np.sin(yaw), np.cos(yaw), tf.transform.translation.y],
                                     [0, 0, 1] ])
         if mother_frame in Topic.names['/tf']._data.keys() :
-            print 'mother frame in first keys'
-            print Topic.names['/tf']._data[mother_frame].keys()
+        #    print 'mother frame in first keys'
+        #    print Topic.names['/tf']._data[mother_frame].keys()
             if child_frame in Topic.names['/tf']._data[mother_frame].keys() :
-                print 'mother frame in second keys'
+        #        print 'mother frame in second keys'
                 tf = Topic.names['/tf']._data[mother_frame][child_frame]
                 yaw = 2 * np.arctan2(tf.transform.rotation.z, tf.transform.rotation.w)
                 tmp = np.array([[np.cos(yaw),np.sin(yaw)], [-np.sin(yaw),np.cos(yaw)]] )
@@ -1103,7 +1113,7 @@ class MainMonitor(BaseWidget) :
                 matrix[:2,:2] = tmp
                 matrix[:2,2:3] = pt
         if matrix[2][2] == 0 :
-            print "no tf matrix"
+        #    print "no tf matrix"
             return np.identity(3)
         else :
             return matrix

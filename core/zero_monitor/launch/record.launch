@@ -1,0 +1,28 @@
+<launch>
+  <node name = "lms1xx" pkg = "lms1xx" type = "LMS1xx_node" args = "_host:=169.254.37.213"/>
+
+  <!--
+  contest parameters
+  -->
+  <param name = "/car_name" value = "ZEROSNU" />
+  <param name = "/data_path" value = "$(find zero_monitor)/data/" />
+  <param name = "/logo_path" value = "$(find zero_monitor)/logo/" />
+  <!--
+  node list
+  -->
+  <node name = "record" pkg = "rosbag" type = "record" args = "record /location_msg /scan -o $(find zero_monitor)/data/$(arg name)"/>
+  <group ns = "zero_monitor">
+    <node name = "zero_monitor" pkg = "zero_monitor" type = "zero_monitor.py"  />
+  </group>
+
+  <group ns = "lidar">
+    <node name = "lidar_subscriber" pkg = "lidar" type = "lidar_subscriber.py"/>
+  </group>
+
+  <group ns = "gps">
+    <node name = "gps" pkg = "gps" type = "first_contest.py" output = "screen"/>
+  </group>
+
+  <!--node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/-->
+
+</launch>

@@ -24,7 +24,7 @@
   </group>
 
   <group ns = "raw_local_map">
-    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" output = "screen"/>
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" />
   </group>
 
   <group ns = "forward_camera">
@@ -33,7 +33,7 @@
   </group>
 
   <group ns = "gps">
-    <node name = "gps" pkg = "gps" type = "gps.py"/>
+    <node name = "gps" pkg = "gps" type = "first_contest.py" output = "screen"/>
   </group>
 
   <group ns = "traffic_light">

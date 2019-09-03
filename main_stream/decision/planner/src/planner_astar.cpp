@@ -35,14 +35,11 @@ bool nodeactivation = true;
 bool parking = false;
 // callback for handling activeness
 void motioncb(core_msgs::MotionState::ConstPtr msg) {
-    std::cout << "motion cb : " << std::endl;
     if (msg->motion_state.compare("PARKING") == 0) {
         parking = true;
-        std::cout << "parking" << std::endl;
     }
     else {
         parking = false;
-        std::cout << "not parking" << std::endl;
     }
     return;
 }
@@ -147,10 +144,15 @@ int main(int argc, char **argv){
             // std::cout << "----------------debug end-----------------" << std::endl;
 
             ob::RealVectorBounds map_bounds(2);
-            map_bounds.setLow(0, -map_len_fix/2);
-            map_bounds.setLow(1, -map_wid_fix/2);
-            map_bounds.setHigh(0, +map_len_fix/2);
-            map_bounds.setHigh(1, +map_wid_fix/2);
+            map_bounds.setLow(0, input_map->info.origin.position.x);
+            map_bounds.setLow(1, input_map->info.origin.position.y);
+            map_bounds.setHigh(0, input_map->info.origin.position.x + map_wid_fix);
+            map_bounds.setHigh(1, input_map->info.origin.position.y + map_len_fix);
+            //sbounds.setLow(0, mp->info.origin.position.x);
+            //sbounds.setHigh(0, mp->info.origin.position.x + mp->info.width * mp->info.resolution);
+            //sbounds.setLow(1, mp->info.origin.position.y);
+            //sbounds.setHigh(1, mp->info.origin.position.y + mp->info.height * mp->info.resolution);
+            //*/
             //map_bounds.setLow(0, -3);
             //map_bounds.setLow(1, -3);
             //map_bounds.setHigh(0, 3);
@@ -168,7 +170,6 @@ int main(int argc, char **argv){
         
             space_info->setStateValidityChecker([map_id, mseq, space](const ob::State *state) {return CarSetupComHandle::isStateValid(map_id, mseq, space, state);});
             space_info->setStateValidityCheckingResolution(0.005);
-            
             //setting up rest of the planner and the goal points
             ss.setOptimizationObjective(obj);
             planner->setup();
@@ -179,7 +180,6 @@ int main(int argc, char **argv){
             //std::cout << "-------------------------------------SimpleSetup----------------------"<<std::endl;
             //ss.print();
             ob::PlannerStatus solved = ss.solve(5);
-
             if(solved){
                 //std::cout << "Path found" << std::endl;
                 og::PathGeometric path = ss.getSolutionPath();

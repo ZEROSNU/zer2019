@@ -21,7 +21,9 @@ is_left_cen = True
 is_right_cen = True
 IMG_SIZE = 200
 
-ROTATION = [np.pi/4,0,-np.pi/4]
+LANE_PIXEL_VALUE = 100
+STOPLINE_PIXEL_VALUE = 200
+ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
 
 class ImageMerger():
     def __init__(self):
@@ -42,8 +44,8 @@ class ImageMerger():
         #self.lane_map += self.lidar_map
         #self.lane_map /= 2
         self.lane_map |= self.lidar_map
-        kernel = np.ones((5,5),np.uint8)
-        self.lane_map = cv2.dilate(self.lane_map, kernel, iterations=1)
+        #kernel = np.ones((5,5),np.uint8)
+        #self.lane_map = cv2.dilate(self.lane_map, kernel, iterations=1)
         return ros_numpy.msgify(Image, self.lane_map, encoding='mono8')
 
     def find_lane_cor(self):
@@ -91,6 +93,7 @@ class ImageMerger():
 
             else:
                 #self.lane_map[0][0] = 255
+                self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 self.pose.pose.position.x = 0
                 self.pose.pose.position.y = 0
                 theta = ROTATION[0]
@@ -104,6 +107,7 @@ class ImageMerger():
 
             else:
                 #self.lane_map[0][IMG_SIZE - 1] = 255
+                self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 self.pose.pose.position.x = 0
                 self.pose.pose.position.y = IMG_SIZE - 1
                 theta = ROTATION[2]
@@ -116,7 +120,10 @@ class ImageMerger():
                     
         elif motion == "HALT":
             #self.lane_map[min(self.mid_cor[0] + 50, IMG_SIZE - 1)][self.mid_cor[1]] =  255
-            self.pose.pose.position.x = min(self.mid_cor[0]+50, IMG_SIZE - 1)
+            stop_line_y = -50
+            if STOPLINE_PIXEL_VALUE in self.lane_map:
+                stop_line_y = np.where(self.lane_map==STOPLINE_PIXEL_VALUE)[0][0]
+            self.pose.pose.position.x = min(stop_line_y+50, IMG_SIZE - 1)
             self.pose.pose.position.y = self.mid_cor[1]
             theta = ROTATION[1]
               
@@ -124,14 +131,16 @@ class ImageMerger():
             self.pose.pose.position.x = self.mid_cor[0]
             self.pose.pose.position.y = self.mid_cor[1]
             theta = ROTATION[1]
+        self.lane_map[self.lane_map==STOPLINE_PIXEL_VALUE] = 0
         qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)   
         self.pose.pose.orientation.x = qframe[0]
         self.pose.pose.orientation.y = qframe[1] 
         self.pose.pose.orientation.z = qframe[2]
         self.pose.pose.orientation.w = qframe[3]
             #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
-        if "SLOW" in motion:
-            self.velocity.velocity_level = 50
+        if not isinstance(motion, type(None)):
+            if "SLOW" in motion:
+                self.velocity.velocity_level = 50
 
 def lane_callback(img):
     merger.set_lane_map(img)
