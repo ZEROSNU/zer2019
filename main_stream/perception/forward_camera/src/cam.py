@@ -8,8 +8,7 @@ import time
 import os
 import yaml
 
-CONFIG_FILE = os.path.join(os.getcwd(), 'config_forward_cam.yaml')
-'''
+CONFIG_FILE = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'config_forward_cam.yaml')
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 H_FRONT = np.array(YAML_CONFIG['H_FRONT'])

@@ -1,0 +1,93 @@
+<html>
+   <head>
+       <title>Google Map</title>
+       <meta name="viewport" content="initial-scale=1.0">
+       <meta charset="utf-8">
+       <style>
+         #map {
+           height: 600;
+           width: 600;
+         }
+       </style>
+   </head>
+   <body>
+       <input type="text" id="label">
+       <div style="padding:10px">
+           <div id="map"></div>
+       </div>
+       <button onclick="save()">Save</button>
+       <script type="text/javascript">
+       var map;
+       var latitude = 37.240140; // YOUR LATITUDE VALUE
+       var longitude = 126.773742; // YOUR LONGITUDE VALUE
+       var label;
+       var markers = [];
+
+       function save() {
+           console.log(markers);
+           download("raw_locations.txt",markers);
+       }
+
+       function download(filename, text) {
+           var element = document.createElement('a');
+           element.setAttribute('href', 'data:text/plain;charset=utf-8,' + encodeURIComponent(text));
+           element.setAttribute('download', filename);
+           element.style.display = 'none';
+           document.body.appendChild(element);
+           element.click();
+           document.body.removeChild(element);
+       }
+       function getLabel() {
+         label = document.getElementById("label").value;
+       }
+       function initMap() {
+           //var geoloccontrol = new klokantech.GeolocationControl(map, mapMaxZoom);
+           var myLatLng = {lat: latitude, lng: longitude};
+           map = new google.maps.Map(document.getElementById('map'), {
+             zoom: 17,
+             center: new google.maps.LatLng(37.240140, 126.773742),
+             disableDoubleClickZoom: true, // disable the default map zoom on double click
+             mapTypeId: google.maps.MapTypeId.SATELLITE
+           });
+           // Update lat/long value of div when anywhere in the map is clicked
+           google.maps.event.addListener(map,'click',function(event) {
+               // document.getElementById('latclicked').innerHTML = event.latLng.lat();
+               // document.getElementById('longclicked').innerHTML =  event.latLng.lng();
+               console.log(event.latLng.lat(), event.latLng.lng());
+           });
+          var marker = new google.maps.Marker({
+             position: myLatLng,
+             map: map,
+             // setting latitude & longitude as title of the marker
+             // title is shown when you hover over the marker
+             title: latitude + ', ' + longitude
+           });
+           // Update lat/long value of div when the marker is clicked
+           marker.addListener('click', function(event) {
+             // document.getElementById('latclicked').innerHTML = event.latLng.lat();
+             // document.getElementById('longclicked').innerHTML =  event.latLng.lng();
+           });
+           // Create new marker on double click event on the map
+           google.maps.event.addListener(map,'dblclick',function(event) {
+               getLabel();
+               lat = event.latLng.lat();
+               lng = event.latLng.lng();
+               var marker = new google.maps.Marker({
+                 position: event.latLng,
+                 map: map,
+                   title: lat + ', ' + lng,
+                 // title: event.latLng.lat()+', '+event.latLng.lng(),
+                 label: label,
+               });
+               markers.push([label, lat, lng]);
+               // Update lat/long value of div when the marker is clicked
+               marker.addListener('click', function() {
+                   //document.getElementById('latclicked').innerHTML = event.latLng.lat();
+                  //document.getElementById('longclicked').innerHTML =  event.latLng.lng();
+               });
+           });
+       }
+       </script>
+       <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyBoe_6iREz2t7Sk7qxAMq6uZo82YS_iZ0g&callback=initMap" async defer></script>
+   </body>
+</html>
