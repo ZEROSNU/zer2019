@@ -200,10 +200,7 @@ class tracker:
                 1. Initialization
                 '''
                 # Initialize curvature
-                if self.first_path == True:
-                        self.curvature = copy.deepcopy(self.curvature_buff[-1])
-                else:
-                        self.curvature = Curvature()
+                self.curvature = copy.deepcopy(self.curvature_buff[-1])
 
                 # Update velocity level
                 if self.update_velocity_level == True:
@@ -229,8 +226,7 @@ class tracker:
                         self.is_PARKING = False
 
                 # Initialize time
-                if self.first_path == True:
-                    initialize_time = self.curvature_time_buff[-1]
+                initialize_time = self.curvature_time_buff[-1]
                 else:
                     initialize_time = rospy.get_rostime().to_sec()
 
