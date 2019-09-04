@@ -29,7 +29,7 @@
 
   <group ns = "forward_camera">
     <node name = "fake_cam" pkg = "forward_camera" type = "fake_cam.py"/>
-    <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py"/>
+    <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py" output = "screen"/>
   </group>
 
   <group ns = "gps">
@@ -50,11 +50,11 @@
 
   <group ns = "planner">
     <node name = "dorrt" pkg = "planner" type = "dorrt"/>
-    <node name = "astar" pkg = "planner" type = "astar" output = "screen"/>
+    <node name = "astar" pkg = "planner" type = "astar"/>
   </group>
 
   <group ns = "path_tracker">
-    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py"/>
+    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py"  />
   </group>
 
   <group ns = "model_estimator">

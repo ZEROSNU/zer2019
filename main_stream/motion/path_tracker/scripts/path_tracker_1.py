@@ -27,7 +27,7 @@ class tracker:
                 self.ESTIMATE_TRACKING = 3
         
                 # Control variable
-                self.look_ahead_distance = 30
+                self.look_ahead_distance = 10
                 self.look_ahead_point= PoseStamped()
 
                 # Input manage
@@ -36,7 +36,7 @@ class tracker:
                 self.latest_generated_path = Path()
                 self.current_path = Path()
                 self.update_path = False
-                self.first_path = True
+                self.first_path = False
 
                 self.latest_velocity_level = VelocityLevel()
                 self.velocity_level = VelocityLevel()
@@ -120,13 +120,10 @@ class tracker:
                 #try:
                         # TODO
                         list_len = len(self.current_path.poses)
-                        if list_len <= 0:
-                                return self.EMERGENCY_BRAKE
-                        if list_len > self.look_ahead_distance:
-                                self.look_ahead_point = copy.deepcopy(self.current_path.poses[self.look_ahead_distance])
+                        if list_len <= self.look_ahead_distance:
+                                self.look_ahead_point = copy.deepcopy(self.current_path.poses[list_len - 1])
                         else:
-                                self.look_ahead_point = copy.deepcopy(self.current_path.poses[-1])
-                                
+                                self.look_ahead_point = copy.deepcopy(self.current_path.poses[self.look_ahead_distance])
                         return temp_control_mode
                 #except:
                 #        print("Set_look_ahead_point failed.")
@@ -136,8 +133,8 @@ class tracker:
                 try:
                         if (self.look_ahead_point.pose.position.x == 0) and (self.look_ahead_point.pose.position.y == 0):
                                 self.curvature.curvature = 0.
-                        else:   
-                                self.curvature.curvature = 2*(self.look_ahead_point.pose.position.x)/((self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2))
+                        else:
+                                self.curvature.curvature = 2*(self.look_ahead_point.pose.position.x/(self.look_ahead_point.pose.position.x**2 + self.look_ahead_point.pose.position.y**2))
                         return temp_control_mode
 
                 except:
@@ -172,13 +169,9 @@ class tracker:
                 '''
                 # Initialize curvature
                 if self.first_path == True:
-                        if len(self.curvature_buff) <= 0:
-                                self.curvature = Curvature()
-                        else:
-                                self.curvature = copy.deepcopy(self.curvature_buff[-1])
+                        self.curvature = copy.deepcopy(self.curvature_buff[-1])
                 else:
                         self.curvature = Curvature()
-                        self.curvature.curvature = 1.
 
                 # Update velocity level
                 if self.update_velocity_level == True:
@@ -199,8 +192,7 @@ class tracker:
 
                 # Initialize time
                 if self.first_path == True:
-                    initialize_time = rospy.get_rostime().to_sec()
-                    #initialize_time = self.curvature_time_buff[-1]
+                    initialize_time = self.curvature_time_buff[-1]
                 else:
                     initialize_time = rospy.get_rostime().to_sec()
 
