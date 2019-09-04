@@ -97,12 +97,12 @@ def mainloop():
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif missionstate.mission_state=="READY_TO_PARK":
             motion.motion_state="FORWARD_MOTION"
-            if park_mask=True:
+            if park_mask==True:
                 if taskstate.mission_state=="PARKING" and slam_mask==True:
                     slam_mask=False
                     slam_launch.start()
         elif missionstate.mission_state=="PARKING_READY":
-            if park_mask=True:
+            if park_mask==True:
                 motion.motion_state="PARKING"
                 if slam_mask==True:
                     slam_mask=False

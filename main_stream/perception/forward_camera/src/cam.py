@@ -33,6 +33,7 @@ H_RIGHT = np.array([[-3.77573821e-01,-1.93550214e-01,  4.91065650e+02],
 )
 
 Z_DEBUG = True
+'''
 PUBLISH_RATE = 30
 
 WARP_WIDTH = 600
