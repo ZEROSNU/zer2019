@@ -554,10 +554,10 @@ bool CarSetupComHandle::CheckonMap (const std::string id, int seq, double x, dou
         double yaw = q.getAngle();
         double fx = cos(yaw) * px + sin(yaw) * py;
         double fy = -sin(yaw) * px + cos(yaw) * py;
-        //if (fx < 0 || fy < 0)
-            //return false;
-        int j = mp->info.width/2 + (int)(std::floor(x/res));
-        int i = mp->info.height/2 + (int)(std::floor(y/res));
+        if (fx < 0 || fy < 0)
+            return false;
+        int j = (int)(std::floor(fx/res));
+        int i = (int)(std::floor(fy/res));
         int w = mp -> info.width;
         if (i < mp->info.height && j < mp->info.width ) {
             if (mp->data[w*i+j] == 0){

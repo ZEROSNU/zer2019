@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # license removed for brevity
 import rospy
+import numpy as np
 from core_msgs.msg import ImuSpeed
 from core_msgs.msg import Curvature
 from core_msgs.msg import VelocityLevel
+from core_msgs.msg import Control
 from core_msgs.msg import ActiveNode #add
 
 steer = 0
@@ -55,7 +57,7 @@ def icb(data) :
     return 0
     
 def ccb(data) :
-    steer = np.atan(1.3*data.curvature)
+    steer = np.arctan(1.3*data.curvature)
 
 
 

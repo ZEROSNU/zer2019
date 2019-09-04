@@ -32,6 +32,7 @@ namespace ompl{
     }
 
     base::PlannerStatus hybridASTAR::solve(const base::PlannerTerminationCondition &ptc){
+      std::cout <<"solve start" << std::endl;
       checkValidity(); 
       std::vector<double> heading_changes = {-pi/12, -pi/24, 0, pi/24, pi/12};
       bool PATH_FOUND = false;        
@@ -59,7 +60,7 @@ namespace ompl{
       double goal_theta = goal->as<base::SE2StateSpace::StateType>()->getYaw();
 
       int dis_goal_x = MAPWIDTH/2 + (int)(std::floor(goal_x/RESOLUTION));
-      int dis_goal_y = MAPHEIGHT/2 + (int)(std::floor(goal_y/RESOLUTION));
+      int dis_goal_y = (int)(std::floor(goal_y/RESOLUTION));
       
       double start_x = start->as<base::SE2StateSpace::StateType>()->getX();
       double start_y = start->as<base::SE2StateSpace::StateType>()->getY();
@@ -77,6 +78,8 @@ namespace ompl{
       open.push_back(current_path);
       closed[dis_goal_x][dis_goal_y] = 1;
       double s = open.size();
+      std::cout << "Debug X: " << goal_x << "Dis: " << dis_goal_x << std::endl;
+      std::cout << "Debug Y: " << goal_y << "Dis: " << dis_goal_y << std::endl;
 
       base::State *current_state(si_->allocState());
       current_state = start;
@@ -106,6 +109,7 @@ namespace ompl{
           psol.setPlannerName(getName());
           pdef_->addSolutionPath(psol);
           std::cout << std::endl << std::endl;
+
           return base::PlannerStatus::EXACT_SOLUTION;
         }
 
@@ -117,7 +121,7 @@ namespace ompl{
         double current_y = current_state->as<base::SE2StateSpace::StateType>()->getY();
         std::vector<double> disc_coord = return_discrete(current_x, current_y);
         int disc_coord_x = MAPWIDTH/2 + (int)(std::floor(current_x/RESOLUTION));
-        int disc_coord_y = MAPHEIGHT/2 + (int)(std::floor(current_y/RESOLUTION));
+        int disc_coord_y = (int)(std::floor(current_y/RESOLUTION));
         
         double ds_X = disc_coord[0];
         double ds_Y = disc_coord[1];
@@ -139,9 +143,9 @@ namespace ompl{
           next_state->as<base::SE2StateSpace::StateType>()->setX(new_X);
           next_state->as<base::SE2StateSpace::StateType>()->setY(new_Y);
           next_state->as<base::SE2StateSpace::StateType>()->setYaw(new_Yaw);
-
-          int discrete_next_x = MAPWIDTH/2 + (int)(std::floor(new_X/RESOLUTION)); 
-          int discrete_next_y = MAPHEIGHT/2 + (int)(std::floor(new_Y/RESOLUTION)); 
+          
+          int discrete_next_x = MAPWIDTH/2 + (int)(std::floor(new_X/RESOLUTION));
+          int discrete_next_y = (int)(std::floor(new_Y/RESOLUTION));
           if(si_->isValid(next_state) && closed[discrete_next_x][discrete_next_y] == 0){
             //std::cout << "VALID STATE" << std::endl;
             next_path = current_path; 
@@ -154,6 +158,7 @@ namespace ompl{
             cost_vector.push_back(cost);
           }
           //std::cout << "===============================================" << std::endl;
+        
         }
       }
     }

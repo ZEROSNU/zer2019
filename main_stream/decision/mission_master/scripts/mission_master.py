@@ -42,7 +42,7 @@ def mainloop():
     uuid=roslaunch.rlutil.get_or_generate_uuid(None, False)
     roslaunch.configure_logging(uuid)
     slam_mask=True
-    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/zero_ws/src/zer2019/main_stream/perception/modified_hector_slam/hector_slam_launch/tutorial.launch"])
+    slam_launch=roslaunch.parent.ROSLaunchParent(uuid, ["home/snuzero/catkin_ws/src/zer2019/main_stream/perception/modified_hector_slam/hector_slam_launch/launch/tutorial.launch"])
     rate = rospy.Rate(10) # 10hz
     #sysco = 'reset' #syscommand string
     motion = MotionState()
@@ -51,7 +51,7 @@ def mainloop():
     while not rospy.is_shutdown():
         motion.header.stamp = rospy.Time.now()
         motion.header.seq = i
-        if taskstate.mission_state!="PARKING" or missionstate.mission_state!="PARKING":
+        if taskstate.mission_state!="PARKING" and missionstate.mission_state!="PARKING":
             if slam_mask==False:
                 slam_mask=True
                 slam_launch.shutdown()
@@ -69,6 +69,8 @@ def mainloop():
                         motion.motion_state="FORWARD_MOTION"
                 else:
                     motion.motion_state="FORWARD_MOTION"
+        elif taskstate.mission=="INTERSECTION_LEFT" and missionstate.mission_state=="JUST_LEFT":
+            motion.motion_state="LEFT_MOTION"
         elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="INTERSECTION_LEFT":
             if lightstate.light_found:
                 if not lightstate.left:
@@ -84,9 +86,9 @@ def mainloop():
                 motion.motion_state="RIGHT_MOTION"
         elif taskstate.mission_state=="OBSTACLE_STATIC" and missionstate.mission_state=="OBSTACLE_STATIC":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="OBSTACLE_DYNAMIC" and missionstate.mission_state=="DYNAMIC":
+        elif taskstate.mission_state=="OBSTACLE_SUDDEN" and missionstate.mission_state=="OBSTACLE_SUDDEN":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="CROSSWALK" and missionstate.mission_state=="CROSSWALK":
+        elif taskstate.mission_state=="CROSSWALK":
             motion.motion_state="HALT"
         elif taskstate.mission_state=="SCHOOL_ZONE" and missionstate.mission_state=="SCHOOL_ZONE":
             motion.motion_state="FORWARD_MOTION_SLOW"
@@ -96,9 +98,7 @@ def mainloop():
             motion.motion_state="PARKING"
             if slam_mask==True:
                 slam_mask=False
-                slam_launch.start()
-        else:
-            motion.motion_state="HALT"               
+                slam_launch.start() 
 
         i = i+1
         if mainloop.active :
