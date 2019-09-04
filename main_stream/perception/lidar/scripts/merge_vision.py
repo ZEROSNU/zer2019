@@ -23,13 +23,17 @@ IMG_SIZE = 200
 
 LANE_PIXEL_VALUE = 100
 STOPLINE_PIXEL_VALUE = 200
-OBSTACLE_BUFFER = [49,19] # buff obstacles as much as circumscribed circle of the car 
+OBSTACLE_BUFFER = [49,23] # buff obstacles as much as circumscribed circle of the car 
+LANE_BUFFER = [1,23]
 ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
+
+DRIVING_VELOCITY = 0.7
 
 class ImageMerger():
     def __init__(self):
         self.lane_map = None
         self.lidar_map = None
+        self.merged_map = None
         self.left_cor = [0, 0] #upper bound of left lane
         self.right_cor = [0, 0] #upper bound if right lane
         self.mid_cor = [0, 0] #medium of two coors
@@ -45,11 +49,13 @@ class ImageMerger():
         #self.lane_map += self.lidar_map
         #self.lane_map /= 2
 
-        kernel = np.ones((OBSTACLE_BUFFER[0],OBSTACLE_BUFFER[1]),np.uint8)
-        self.lidar_map = cv2.dilate(self.lidar_map, kernel, iterations=1)
+        obst_kernel = np.ones((OBSTACLE_BUFFER[0],OBSTACLE_BUFFER[1]),np.uint8)
+        lane_kernel = np.ones((LANE_BUFFER[0],LANE_BUFFER[1]),np.uint8)
+        self.lidar_map = cv2.dilate(self.lidar_map, obst_kernel, iterations=1)
+        #self.lane_map = cv2.dilate(self.lane_map, lane_kernel, iterations=1)
         
-        self.lane_map |= self.lidar_map
-        return ros_numpy.msgify(Image, self.lane_map, encoding='mono8')
+        self.merged_map = self.lidar_map | self.lane_map
+        return ros_numpy.msgify(Image, self.merged_map, encoding='mono8')
 
     def find_lane_cor(self):
         '''
@@ -73,10 +79,32 @@ class ImageMerger():
         middle_num = len(mid_cor)
         right_num = len(right_cor)
         '''
-        goalpose_y = 50
-        mid_center_array = self.lane_map[goalpose_y, :]
+        goalpose_y = 150
+        if isinstance(self.merged_map, type(None)):
+            mid_center_array = self.lane_map[goalpose_y, :]
+        else:
+            mid_center_array = self.merged_map[goalpose_y, :]
         mid_center_cor = np.where(mid_center_array == 0)[0]
-
+        available_region = [[]]
+        first_cor = mid_center_cor[0]
+        idx = 0
+        for cor in mid_center_cor[1:]:
+            if cor - first_cor == 1:
+                available_region[idx].append(cor)
+            else:
+                available_region.append([])
+                idx += 1
+                available_region[idx].append(cor)
+                
+            first_cor = cor
+        max_len = 0
+        actual_region = []
+        for region in available_region:
+            
+            if len(region) > max_len:
+                actual_region = region
+                max_len = len(region)
+        
         '''
         if left_num == 0 and right_num == 0 and middle_num != 0:
             self.left_cor = [IMG_SIZE/2, mid_center_cor[0]]
@@ -98,15 +126,16 @@ class ImageMerger():
             self.right_cor = [0, IMG_SIZE /2]
         self.mid_cor = np.add(self.left_cor, self.right_cor) / 2
         '''
-        self.left_cor = (goalpose_y,mid_center_cor[0])
-        self.right_cor = (goalpose_y, mid_center_cor[-1])
+        self.left_cor = (goalpose_y,actual_region[0])
+        self.right_cor = (goalpose_y, actual_region[-1])
         self.mid_cor = np.add(self.left_cor, self.right_cor) / 2
+        
         if self.mid_cor[0] < 0 or self.mid_cor[0] >= IMG_SIZE or self.mid_cor[1] < 0 or self.mid_cor[1] >=IMG_SIZE:
             self.mid_cor[0] = goalpose_y
             self.mid_cor[1] = IMG_SIZE/2
         
     def set_goal(self):
-        self.velocity.velocity_level = 1
+        self.velocity.velocity_level = DRIVING_VELOCITY
         if motion == "LEFT_MOTION":
             if is_left_cen:
                 #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
@@ -163,7 +192,7 @@ class ImageMerger():
         self.pose.pose.orientation.w = qframe[3]
         if not isinstance(motion, type(None)):
             if "SLOW" in motion:
-                self.velocity.velocity_level = 1
+                self.velocity.velocity_level = DRIVING_VELOCITY
 
 def lane_callback(img):
     merger.set_lane_map(img)
@@ -216,7 +245,6 @@ if __name__ == "__main__":
         if not isinstance(merger.lane_map, type(None)) and not isinstance(merger.lidar_map, type(None)) and isactive:
             occupancy = OccupancyGrid()
             
-            merger.pose
 
             merger.find_lane_cor()
             merger.set_goal()
@@ -247,6 +275,7 @@ if __name__ == "__main__":
             merger.velocity.header.stamp = rospy.Time.now()
             merger.velocity.header.frame_id = "car_frame"
             velocity_level_pub.publish(merger.velocity)
+        
         else:
             merged_img = ros_numpy.msgify(Image, np.zeros((IMG_SIZE,IMG_SIZE),np.uint8), encoding='mono8')
             merged_arr = ros_numpy.numpify(merged_img)
@@ -274,6 +303,7 @@ if __name__ == "__main__":
             velocity = VelocityLevel()
             velocity.header.frame_id = "car_frame"
             velocity_level_pub.publish(velocity)
+        
 
 
 

@@ -34,7 +34,7 @@ CONFIG_FILE = '/home/snuzero/catkin_ws/src/zer2019/main_stream/perception/forwar
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
-LANE_ROI_OFFSET = (-50,50)
+LANE_ROI_OFFSET = (-100,100)
 
 # Maximum offset pixels from previous lane polynomial (consider turning direction)
 LANE_ROI_LEFT = (-40,20) # respectively, lower bound and upper bound
@@ -262,7 +262,6 @@ def gaussian_blur(img, kernel_size):
 
 def draw_line_with_color(image_in):
     global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH
-    
     lane_color = [100,0,0]
     stop_line_color = [200,0,0]
     
@@ -276,7 +275,7 @@ def draw_line_with_color(image_in):
     
 
     image, stop_lines = filter_colors(image_in)
-    
+
     points = np.where(image>0)
     x_vals = points[1]
     y_vals = points[0]

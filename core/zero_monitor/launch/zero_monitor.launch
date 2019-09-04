@@ -33,7 +33,7 @@
   </group>
 
   <group ns = "gps">
-    <node name = "gps" pkg = "gps" type = "first_contest.py" output = "screen"/>
+    <node name = "gps" pkg = "gps" type = "first_contest.py" />
   </group>
 
   <group ns = "traffic_light">
@@ -55,7 +55,7 @@
   </group>
 
   <group ns = "path_tracker">
-    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py"/>
+    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py" output = "screen"/>
   </group>
 
   <group ns = "model_estimator">
