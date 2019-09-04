@@ -12,7 +12,7 @@ from core_msgs.msg import Control
 
 def init():
     
-    pub = rospy.Publisher('control', Control, queue_size=10)
+    pub = rospy.Publisher('/calibrated_control', Control, queue_size=10)
     rospy.init_node('control_sender', anonymous=True)
     rate = rospy.Rate(20)
     msg = Control()

@@ -60,7 +60,7 @@ def callback(data):
     rgb[:,:,1] = bgr[:,:,1]
     rgb[:,:,2] = bgr[:,:,0]
 
-    tl_path = '/home/snuzero/tl_classification/output/tl.txt'
+    tl_path = '/home/snuzero/tl_classfication/output/tl.txt'
     tl_img_path = '/home/snuzero/zero_ws/src/zer2019/core/zero_monitor/data/traffic/test.jpg'
     
     cv2.imwrite(tl_img_path,bgr)

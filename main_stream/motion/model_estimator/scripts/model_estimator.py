@@ -15,6 +15,8 @@ def mainloop():
     '''
     code for activate and deactivate the node
     '''
+    global veloicty
+    global steer
     nodename = 'model_estimator'
     mainloop.active = True
     def signalResponse(data) :
@@ -37,6 +39,7 @@ def mainloop():
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
     control = Control()
+    control.is_auto = True
     control.header.frame_id = 'car_frame'
     i=0
     while not rospy.is_shutdown():
@@ -49,7 +52,9 @@ def mainloop():
             pub.publish(control)
         rate.sleep()
 def vcb(data) :
+    global velocity
     velocity = data.velocity_level
+    print "got velocity"
 
 
 def icb(data) :
@@ -57,7 +62,8 @@ def icb(data) :
     return 0
     
 def ccb(data) :
-    steer = np.arctan(1.3*data.curvature)
+    global steer
+    steer = np.arctan(1.7*data.curvature)/np.pi * 180
 
 
 

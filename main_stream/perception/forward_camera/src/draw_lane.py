@@ -489,6 +489,7 @@ def draw_line_with_color(image_in):
             if coeff_left[2] > IMAGE_SIZE/2 and coeff_right[2] > IMAGE_SIZE/2:
                 coeff_left = np.array(coeff_right)
                 coeff_left[2] -= LANE_WIDTH
+            
             if coeff_right[2] < IMAGE_SIZE/2 and coeff_left[2] < IMAGE_SIZE/2:
                 coeff_right = np.array(coeff_left)
                 coeff_right[2] += LANE_WIDTH
@@ -793,14 +794,14 @@ def filter_colors(image):
     #white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
     #blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
     
-    hsv_mask = yellow_mask + blue_mask
+    hsv_mask = yellow_mask# + blue_mask
 
     white_image = cv2.bitwise_and(image, image, mask=white_mask)
     hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
     # Combine the two above images
-    image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
-    
+    #image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
+    image2 = white_image
     if len (left_coeff_buffer) == 3:
         left_y = int(left_coeff_buffer[2][2])
         right_y = int(right_coeff_buffer[2][2])

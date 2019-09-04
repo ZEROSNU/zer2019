@@ -62,6 +62,9 @@
     <node name = "model_estimator" pkg = "model_estimator" type = "model_estimator.py"/>
   </group>
 
+  <group ns = "serial_communicator">
+    <node name = "serial_communicator" pkg = "serial_communicator" type = "serial_com.py"/>
+  </group>
   <!--node name = "rqt_graph" pkg = "rqt_graph" type = "rqt_graph"/-->
 
 </launch>

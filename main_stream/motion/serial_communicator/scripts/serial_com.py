@@ -22,9 +22,9 @@ p= os.system('echo %s|sudo -S %s' % (sudoPassword, command))
 
 def init():
 
-    pub = rospy.Publisher('vehicle_state', VehicleState, queue_size=10)
+    pub = rospy.Publisher('/vehicle_state', VehicleState, queue_size=10)
     control_data = getControlData()
-    rospy.Subscriber("control", Control, control_data.callback)
+    rospy.Subscriber("/calibrated_control", Control, control_data.callback)
     rospy.init_node('serial_com', anonymous=True)
     rate = rospy.Rate(50)
     msg = VehicleState() #define msg - current platform state

@@ -46,9 +46,10 @@ class ImageMerger():
         #self.lane_map /= 2
 
         kernel = np.ones((OBSTACLE_BUFFER[0],OBSTACLE_BUFFER[1]),np.uint8)
+        self.lidar_map = cv2.dilate(self.lidar_map, kernel, iterations=1)
+        
         self.lane_map |= self.lidar_map
-        merged = cv2.dilate(self.lane_map, kernel, iterations=1)
-        return ros_numpy.msgify(Image, merged, encoding='mono8')
+        return ros_numpy.msgify(Image, self.lane_map, encoding='mono8')
 
     def find_lane_cor(self):
         '''
@@ -72,7 +73,8 @@ class ImageMerger():
         middle_num = len(mid_cor)
         right_num = len(right_cor)
         '''
-        mid_center_array = self.lane_map[IMG_SIZE/2, :]
+        goalpose_y = 50
+        mid_center_array = self.lane_map[goalpose_y, :]
         mid_center_cor = np.where(mid_center_array == 0)[0]
 
         '''
@@ -96,15 +98,15 @@ class ImageMerger():
             self.right_cor = [0, IMG_SIZE /2]
         self.mid_cor = np.add(self.left_cor, self.right_cor) / 2
         '''
-        self.left_cor = (IMG_SIZE/2,mid_center_cor[0])
-        self.right_cor = (IMG_SIZE/2, mid_center_cor[-1])
+        self.left_cor = (goalpose_y,mid_center_cor[0])
+        self.right_cor = (goalpose_y, mid_center_cor[-1])
         self.mid_cor = np.add(self.left_cor, self.right_cor) / 2
         if self.mid_cor[0] < 0 or self.mid_cor[0] >= IMG_SIZE or self.mid_cor[1] < 0 or self.mid_cor[1] >=IMG_SIZE:
-            self.mid_cor[0] = IMG_SIZE/2
+            self.mid_cor[0] = goalpose_y
             self.mid_cor[1] = IMG_SIZE/2
         
     def set_goal(self):
-        self.velocity.velocity_level = 100
+        self.velocity.velocity_level = 1
         if motion == "LEFT_MOTION":
             if is_left_cen:
                 #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
@@ -146,7 +148,7 @@ class ImageMerger():
             else:
                 stop_line_y = -50
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
-            self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, IMG_SIZE/2),IMG_SIZE)) / 100.0 * 3
+            self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
             theta = ROTATION[1]
               
         else:
@@ -161,7 +163,7 @@ class ImageMerger():
         self.pose.pose.orientation.w = qframe[3]
         if not isinstance(motion, type(None)):
             if "SLOW" in motion:
-                self.velocity.velocity_level = 50
+                self.velocity.velocity_level = 1
 
 def lane_callback(img):
     merger.set_lane_map(img)

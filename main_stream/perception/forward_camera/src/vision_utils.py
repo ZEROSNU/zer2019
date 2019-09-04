@@ -45,7 +45,7 @@ def calculate_rsquared(x, y, f):
 
 
 if __name__ == "__main__":
-    cam = cv2.VideoCapture(2)
+    cam = cv2.VideoCapture(1)
     cv2.namedWindow('img')
     cv2.setMouseCallback('img',get_hsv_color)
     #img = cv2.imread('/home/kimsangmin/ZERO_VISION/bird/7/192.jpg')
@@ -55,7 +55,7 @@ if __name__ == "__main__":
     yellow = findColor(hsv, lower_yellow, upper_yellow)
     white = findColor(img, lower_white, upper_white)
     cv2.imshow('img', img)
-    cv2.imshow('blue',blue)
-    cv2.imshow('yellow',yellow)
-    cv2.imshow('white', white)
+    #cv2.imshow('blue',blue)
+    #cv2.imshow('yellow',yellow)
+    #cv2.imshow('white', white)
     cv2.waitKey(100000)
