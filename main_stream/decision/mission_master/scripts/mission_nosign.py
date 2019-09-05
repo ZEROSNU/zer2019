@@ -58,23 +58,23 @@ def mainloop():
             #if slam_mask==False:
                 #slam_mask=True
                 #slam_launch.shutdown()
-        if taskstate.mission_state=="NO_SIGN":
-            if missionstate.mission_state=="DRIVING_SECTION":
-                motion.motion_state="FORWARD_MOTION"
-        elif taskstate.mission_state=="INTERSECTION_STRAIGHT":
-            if missionstate.mission_state=="INTERSECTION_STRAIGHT":
-                if lightstate.light_found:
-                    if lightstate.red and not lightstate.yellow and not lightstate.green:
-                        motion.motion_state="HALT"
-                    elif not lightstate.red and lightstate.yellow and not lightstate.green:
-                        motion.motion_state="HALT"
-                    else:
-                        motion.motion_state="FORWARD_MOTION"
+	if taskstate.mission_state=="CROSSWALk":
+	    motion.motion_state="HALT"
+      	elif missionstate.mission_state=="DRIVING_SECTION":
+            motion.motion_state="FORWARD_MOTION"
+       	elif missionstate.mission_state=="INTERSECTION_STRAIGHT":
+            if lightstate.light_found:
+                if lightstate.red and not lightstate.yellow and not lightstate.green:
+                    motion.motion_state="HALT"
+                elif not lightstate.red and lightstate.yellow and not lightstate.green:
+                    motion.motion_state="HALT"
                 else:
                     motion.motion_state="FORWARD_MOTION"
-        elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="JUST_LEFT":
+            else:
+                motion.motion_state="FORWARD_MOTION"
+       	elif missionstate.mission_state=="JUST_LEFT":
             motion.motion_state="LEFT_MOTION"
-        elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="INTERSECTION_LEFT":
+        elif missionstate.mission_state=="INTERSECTION_LEFT":
             if lightstate.light_found:
                 if not lightstate.left:
                     motion.motion_state="HALT"
@@ -82,20 +82,18 @@ def mainloop():
                     motion.motion_state="LEFT_MOTION"
             else: 
                 motion.motion_state="LEFT_MOTION"
-        elif taskstate.mission_state=="INTERSECTION_RIGHT" and missionstate.mission_state=="INTERSECTION_RIGHT":
+        elif missionstate.mission_state=="INTERSECTION_RIGHT":
             if lightstate.light_found:
                 motion.motion_state="RIGHT_MOTION"
             else:
                 motion.motion_state="RIGHT_MOTION"
-        elif taskstate.mission_state=="OBSTACLE_STATIC" and missionstate.mission_state=="OBSTACLE_STATIC":
+        elif missionstate.mission_state=="OBSTACLE_STATIC":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="OBSTACLE_SUDDEN" and missionstate.mission_state=="OBSTACLE_SUDDEN":
+        elif missionstate.mission_state=="OBSTACLE_SUDDEN":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="CROSSWALK":
-            motion.motion_state="HALT"
-        elif taskstate.mission_state=="SCHOOL_ZONE" and missionstate.mission_state=="SCHOOL_ZONE":
+        elif missionstate.mission_state=="SCHOOL_ZONE":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="SPEED_BUST" and missionstate.mission_state=="SPEED_BUST":
+        elif missionstate.mission_state=="SPEED_BUST":
             motion.motion_state="FORWARD_MOTION_SLOW"
         #elif missionstate.mission_state=="READY_TO_PARK":
             #motion.motion_state="FORWARD_MOTION"
