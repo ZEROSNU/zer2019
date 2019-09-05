@@ -49,9 +49,6 @@ class ImageMerger():
 
     def set_lane_map(self, img):
         self.lane_map = ros_numpy.numpify(img)
-        lane_kernel = np.ones((LANE_BUFFER[0],LANE_BUFFER[1]),np.uint8)
-        
-        self.lane_map = cv2.dilate(self.lane_map, lane_kernel, iterations=1)
         
     def set_lidar_map(self, img):
         self.lidar_map = ros_numpy.numpify(img)
@@ -331,8 +328,8 @@ if __name__ == "__main__":
             if isactive:
                 velocity_level_pub.publish(merger.velocity)
         
-        else:
-            merged_img = ros_numpy.msgify(Image, np.zeros((IMG_SIZE,IMG_SIZE),np.uint8), encoding='mono8')
+        elif not isinstance(merger.merged_map, type(None)):
+            merged_img = ros_numpy.msgify(Image, merger.merged_map, encoding='mono8')
             merged_arr = ros_numpy.numpify(merged_img)
             if isactive:    
                 obstacle_map_pub.publish(merged_img)
