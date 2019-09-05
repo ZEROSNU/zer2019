@@ -42,6 +42,8 @@ class ImageMerger():
         self.left_cor = [0, 0] #upper bound of left lane
         self.right_cor = [0, 0] #upper bound if right lane
         self.mid_cor = [0, 0] #medium of two coors
+        self.turn_count = 0
+        self.count = 0
         self.pose = PoseStamped()
         self.velocity = VelocityLevel()
 
@@ -172,9 +174,10 @@ class ImageMerger():
                 self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[0][0] = 255
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
-                if self.count <= CHANGE_LINE_TIME * MISSION_RATE:
+                if self.turn_count <= CHANGE_LINE_TIME * MISSION_RATE:
                     self.pose.pose.position.x = -1
                     self.pose.pose.position.y = 3
+                    self.turn_count += 1
                 else:
                     self.velocity.velocity_level = DRIVING_VELOCITY
                     self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
@@ -228,6 +231,9 @@ class ImageMerger():
         
         if motion != "HALT":
             self.count = 0
+        if motion != "LEFT_MOTION":
+            self.turn_count = 0
+        
         self.lane_map[self.lane_map==STOPLINE_PIXEL_VALUE] = 0
         qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)   
         self.pose.pose.orientation.x = qframe[0]
