@@ -30,12 +30,12 @@
   </group>
 
   <group ns = "raw_local_map">
-    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py"  />
+    <node name = "map_merger" pkg = "lidar" type = "merge_vision.py" output = "screen" />
   </group>
 
   <group ns = "forward_camera">
     <node name = "cam" pkg = "forward_camera" type = "cam.py"/>
-    <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py"/>
+    <node name = "forward_camera" pkg = "forward_camera" type = "draw_lane.py" />
   </group>
 
   <group ns = "gps">
@@ -61,7 +61,7 @@
   </group>
 
   <group ns = "path_tracker">
-    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py" output = "screen" />
+    <node name = "path_tracker" pkg = "path_tracker" type = "path_tracker.py"  />
   </group>
 
   <group ns = "model_estimator">
