@@ -10,6 +10,7 @@ from cv_bridge import CvBridge, CvBridgeError
 from vision_utils import *
 from core_msgs.msg import ActiveNode
 from core_msgs.msg import CenterLine
+from core_msgs.msg import MissionState
 from matplotlib import pyplot as plt
 import pdb
 from time import sleep # for debug 
@@ -33,7 +34,7 @@ CONFIG_FILE = '/home/snuzero/catkin_ws/src/zer2019/main_stream/perception/forwar
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
-LANE_ROI_OFFSET = (-50,50)
+LANE_ROI_OFFSET = (-100,100)
 
 # Maximum offset pixels from previous lane polynomial (consider turning direction)
 LANE_ROI_LEFT = (-40,20) # respectively, lower bound and upper bound
@@ -83,6 +84,30 @@ THRESHOLD = 15     # minimum number of votes (intersections in Hough grid cell)
 MIN_LINE_LENGTH = 10 #minimum number of pixels making up a line
 MAX_LINE_GAP = 10    # maximum gap in pixels between connectable line segments
 
+# kernel legnth which varying according to image size
+KERNEL_LEN = 5
+
+# morphology kernels
+CLOSED_KERNEL = np.ones((KERNEL_LEN,KERNEL_LEN),np.uint8)
+OPEN_KERNEL = np.ones((5,5),np.uint8)
+
+NOISE_CANCLE_X = np.ones((KERNEL_LEN,1),np.uint8)
+NOISE_CANCLE_Y = np.ones((1,KERNEL_LEN),np.uint8)
+
+CORNER_DILATE_KERNEL = np.ones((5,5),np.uint8)
+
+# harris corner detection parameters
+NEIGHBOURHOOD_PIXELS = 40 # adjecent pixels for calculating gradient diff, tune with the image size, test : [920, 690]
+KSIZE = 3 # kernel size for sobel operator
+FREE = 0.04 # harris detector free parameter, recommended value range [0.04,0.06]
+
+# parameter for fine tune
+DETECTION_RANGE = 0.3 # set detection range, higher value means more points, [0,1]
+
+# Mean-shift parameters
+RADIUS = 10
+EPSILON = 0.001
+
 # Color Thresholds
 WHITE_THRESHOLD = YAML_CONFIG['WHITE_THRESHOLD']
 LOWER_YELLOW = np.array(YAML_CONFIG['LOWER_YELLOW'], np.uint8)
@@ -94,15 +119,23 @@ class LaneNode:
 
     def __init__(self):
         self.node_name = 'forward_camera'
+        
         self.pub_lane_map = rospy.Publisher('/lane_data', Image, queue_size=1)
         self.pub_center_line = rospy.Publisher('/is_center', CenterLine, queue_size=1)
+        self.pub_corner_map = rospy.Publisher('/corner_points', Image, queue_size=1)
+
         self.sub_active_nodes = rospy.Subscriber('/active_nodes', ActiveNode, self.signalResponse)
         self.sub_raw_img = rospy.Subscriber('/forward_camera/raw_img', Image, self.callback)
+        #self.sub_mission = rospy.Subscriber('/active_nodes', MissionState , self.mission_callback)
         self.active = True
         self.bridge = CvBridge()
         self.cl = CenterLine()
         self.seq = 0
-
+        self.mission_state = "PARKING"
+    '''
+    def mission_callback(self, data):
+        self.mission_state = data.mission_state
+    '''
     def signalResponse(self, data):
         if 'zero_monitor' in data.active_nodes:
             if self.node_name in data.active_nodes:
@@ -114,6 +147,15 @@ class LaneNode:
     
     def callback(self, data):
         img_input = self.bridge.imgmsg_to_cv2(data, 'bgr8')
+        '''
+        if self.mission_state == "PARKING":
+            corners = harris(img_input)
+            map_points = corners/3
+            corner_map = np.zeros((MAP_SIZE,MAP_SIZE,3),np.uint8)
+            for point in map_points:
+                corner_map[point[0],point[1],:] = [0,0,255]
+                self.pub_corner_map.publish(corner_map)
+        '''
         #img_output = annotate_image_array(img_input)
         img_output,_,is_center_left,is_center_right = draw_line_with_color(img_input)
         img_output = img_output[:,:IMAGE_SIZE]
@@ -128,16 +170,18 @@ class LaneNode:
         send_img_raw_map = self.bridge.cv2_to_imgmsg(map_img, encoding='mono8')
         
         
-        #self.cl.is_center_left = is_center_left
-        self.cl.is_center_left = False
+        self.cl.is_center_left = is_center_left
+        #self.cl.is_center_left = False
         self.cl.is_center_right = is_center_right
 
         if self.active:
             self.cl.header.stamp = rospy.Time.now()
             self.cl.header.seq = self.seq
             self.seq += 1
-            self.cl.header.frame_id = 'center_line'
-        
+            self.cl.header.frame_id = 'car_frame'
+            send_img_raw_map.header.stamp =rospy.Time.now()
+            send_img_raw_map.header.frame_id = 'car_frame'
+            
         
             self.pub_lane_map.publish(send_img_raw_map)
             self.pub_center_line.publish(self.cl)
@@ -146,6 +190,59 @@ class LaneNode:
             cv2.imshow('color_image',img_input)
             cv2.imshow('output',map_img)
             cv2.waitKey(1)
+
+
+def calc_dist(points):
+    '''
+        points : x, y coordinates
+    return distance matrix
+    '''
+    dist = np.zeros((len(points),len(points)))
+    for i, point_i in enumerate(points):
+        for j, point_j in enumerate(points):
+            if i==j:
+                continue
+            dist[i,j] = np.sqrt((point_j[0]-point_i[0])**2 + (point_j[1]-point_i[1])**2)
+    return dist
+
+def harris(image):
+
+    lower_white = np.array([WHITE_THRESHOLD]*3)
+    upper_white = np.array([255]*3)
+
+    white_mask = cv2.inRange(image, lower_white, upper_white)
+
+    white_image = cv2.bitwise_and(image, image, mask=white_mask)
+    #cv2.imshow('filtered',white_image)
+    white_image = cv2.morphologyEx(white_image, cv2.MORPH_OPEN, OPEN_KERNEL)
+    #cv2.imshow('open', white_image)
+    white_image = cv2.morphologyEx(white_image, cv2.MORPH_CLOSE, CLOSED_KERNEL)
+    #cv2.imshow('closed', white_image)
+    white_image = cv2.morphologyEx(white_image, cv2.MORPH_OPEN,NOISE_CANCLE_X)
+    white_image = cv2.morphologyEx(white_image, cv2.MORPH_OPEN,NOISE_CANCLE_Y)
+    gray = cv2.cvtColor(white_image, cv2.COLOR_BGR2GRAY)
+    gray[gray > 100] = 100
+
+    gray = np.float32(gray)
+    dst = cv2.cornerHarris(gray,NEIGHBOURHOOD_PIXELS,KSIZE,FREE)
+    
+    dst = cv2.dilate(dst, CORNER_DILATE_KERNEL)
+
+    corner_regions = np.zeros(dst.shape,np.uint8)
+    corner_regions[dst > (1-DETECTION_RANGE)*dst.max()] = 255
+
+    _, contours, _ = cv2.findContours(corner_regions, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    
+    corner_points = []
+    for cnt in contours:
+        M = cv2.moments(cnt)
+        cx = int(M["m10"]/M["m00"])
+        cy = int(M["m01"]/M["m00"])
+        corner_points.append((cx,cy))
+    corner_points = np.array(corner_points)
+    #cv2.imshow('dst', gray)
+    #cv2.waitKey(0)
+    return corner_points
 
 
 def grayscale(img):
@@ -165,7 +262,6 @@ def gaussian_blur(img, kernel_size):
 
 def draw_line_with_color(image_in):
     global NO_LANE_COUNT, CROSSWALK, ROBUST_SEARCH
-    
     lane_color = [100,0,0]
     stop_line_color = [200,0,0]
     
@@ -179,7 +275,7 @@ def draw_line_with_color(image_in):
     
 
     image, stop_lines = filter_colors(image_in)
-    
+
     points = np.where(image>0)
     x_vals = points[1]
     y_vals = points[0]
@@ -366,12 +462,11 @@ def draw_line_with_color(image_in):
                 is_center_left = True
             if (len(right_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[right_y_candidates,right_x_candidates])> 200) > 1000:
                 is_center_right = True
-
+            
             # Handle exceptions
             # 1) two lines are overlapped
             
             if abs(coeff_left[2] - coeff_right[2]) < OVERLAP_THRES:
-                pdb.set_trace()
                 if coeff_left[2] < IMAGE_SIZE/2:
                     coeff_right = np.array(coeff_left)
                     coeff_right[2] += LANE_WIDTH
@@ -393,6 +488,7 @@ def draw_line_with_color(image_in):
             if coeff_left[2] > IMAGE_SIZE/2 and coeff_right[2] > IMAGE_SIZE/2:
                 coeff_left = np.array(coeff_right)
                 coeff_left[2] -= LANE_WIDTH
+            
             if coeff_right[2] < IMAGE_SIZE/2 and coeff_left[2] < IMAGE_SIZE/2:
                 coeff_right = np.array(coeff_left)
                 coeff_right[2] += LANE_WIDTH
@@ -704,7 +800,7 @@ def filter_colors(image):
 
     # Combine the two above images
     image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
-    
+    #image2 = white_image
     if len (left_coeff_buffer) == 3:
         left_y = int(left_coeff_buffer[2][2])
         right_y = int(right_coeff_buffer[2][2])
@@ -723,7 +819,7 @@ def filter_colors(image):
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)#pdb.set_trace()
 
     CROSSWALK = False
-
+    
     if len(stop_lines[0]) > 5:
         print("STOPLINE!")
         image2[:,stop_lines[0][0]:stop_lines[0][-1]] = [0,0,0]
@@ -736,6 +832,7 @@ def filter_colors(image):
             CROSSWALK = False
     
     cv2.imshow('color_filtered', image2)
+    cv2.waitKey(1)
 
     return image2, stop_lines[0]
 

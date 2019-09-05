@@ -12,7 +12,8 @@ missionstate=MissionState()
 lightstate=LightState()
 taskstate=MissionState()
 slam_mask = True
-
+park_mask = True
+park_count= 0
 def mainloop():
     global slam_mask
     '''
@@ -51,7 +52,7 @@ def mainloop():
     while not rospy.is_shutdown():
         motion.header.stamp = rospy.Time.now()
         motion.header.seq = i
-        if taskstate.mission_state!="PARKING" and missionstate.mission_state!="PARKING":
+        if taskstate.mission_state!="PARKING" and missionstate.mission_state!="PARKING" and missionstate.mission_state!="READY_TO_PARK" and missionstate.mission_state!="PARKING_READY":
             if slam_mask==False:
                 slam_mask=True
                 slam_launch.shutdown()
@@ -94,8 +95,27 @@ def mainloop():
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="SPEED_BUST" and missionstate.mission_state=="SPEED_BUST":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="PARKING" and missionstate.mission_state=="PARKING":
+        elif missionstate.mission_state=="READY_TO_PARK":
+            motion.motion_state="FORWARD_MOTION"
+            if park_mask==True:
+                if taskstate.mission_state=="PARKING" and slam_mask==True:
+                    slam_mask=False
+                    slam_launch.start()
+        elif missionstate.mission_state=="PARKING_READY":
+            if park_mask==True:
+                motion.motion_state="PARKING"
+                if slam_mask==True:
+                    slam_mask=False
+                    slam_launch.start()
+            else:
+                if park_count>=0:
+                    park_count=park_count+1
+                if park_count>100:
+                    motion.motion_state="FORWARD_MOTION"
+                    park_count=-1
+        elif missionstate.mission_state=="PARKING" and park_count>=0:
             motion.motion_state="PARKING"
+            park_mask=False
             if slam_mask==True:
                 slam_mask=False
                 slam_launch.start() 

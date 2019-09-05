@@ -179,7 +179,7 @@ int main(int argc, char **argv){
             ss.setup();
             //std::cout << "-------------------------------------SimpleSetup----------------------"<<std::endl;
             //ss.print();
-            ob::PlannerStatus solved = ss.solve(5);
+            ob::PlannerStatus solved = ss.solve(1);
             if(solved){
                 //std::cout << "Path found" << std::endl;
                 og::PathGeometric path = ss.getSolutionPath();

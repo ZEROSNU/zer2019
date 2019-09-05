@@ -8,9 +8,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge, CvBridgeError
 import cv2
 
-count = 0 # count for late update 30Hz -> 10Hz
-
-
 light = LightState()
 
 def mainloop():
@@ -54,14 +51,14 @@ def callback(data):
     global light
     bridge = CvBridge()
     bgr = bridge.imgmsg_to_cv2(data, 'bgr8')
-    
+    '''
     rgb = np.zeros(bgr.shape)
     rgb[:,:,0] = bgr[:,:,2]
     rgb[:,:,1] = bgr[:,:,1]
     rgb[:,:,2] = bgr[:,:,0]
-
+    '''
     tl_path = '/home/snuzero/tl_classification/output/tl.txt'
-    tl_img_path = '/home/snuzero/zero_ws/src/zer2019/core/zero_monitor/data/traffic/test.jpg'
+    tl_img_path = '/home/snuzero/catkin_ws/src/zer2019/core/zero_monitor/data/traffic_light/test.jpg'
     
     cv2.imwrite(tl_img_path,bgr)
 

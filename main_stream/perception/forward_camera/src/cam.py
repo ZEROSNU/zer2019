@@ -16,6 +16,24 @@ H_LEFT = np.array(YAML_CONFIG['H_LEFT'])
 H_RIGHT = np.array(YAML_CONFIG['H_RIGHT'])
 
 Z_DEBUG = YAML_CONFIG['Z_DEBUG']
+'''
+H_FRONT = np.array([[-3.79308675e-02,-2.42026574e-01 , 6.05607718e+02],
+ [ 8.66331197e-01,  1.96981320e+00,  4.53862897e+01],
+ [ 6.87069479e-05,  6.87967759e-03,  1.00000000e+00]]
+)
+
+H_LEFT = np.array([[ 4.94499884e-01, -3.04263406e-01,  5.01400447e+02],
+ [ 9.34040761e-01,  2.58011328e+00, -3.86777580e+02],
+ [ 1.29174638e-05,  8.05924376e-03,  1.00000000e+00]]
+)
+
+H_RIGHT = np.array([[-3.77573821e-01,-1.93550214e-01,  4.91065650e+02],
+ [ 3.73161704e-01,  1.23552295e+00,  3.97692330e+02],
+ [-3.56713292e-04,  4.58579479e-03,  1.00000000e+00]]
+)
+
+Z_DEBUG = True
+'''
 PUBLISH_RATE = 30
 
 WARP_WIDTH = 600
@@ -112,10 +130,10 @@ if __name__ == '__main__':
         # Node to obtain call camera data. Separate I/O pipeline
         rospy.loginfo('Init Cameras...')
         while True:
-            cam_front = cv2.VideoCapture(2)
-            cam_left = cv2.VideoCapture(1)
-            cam_right = cv2.VideoCapture(4)
-            cam_wide = cv2.VideoCapture(3)
+            cam_front = cv2.VideoCapture(1)
+            cam_left = cv2.VideoCapture(0)
+            cam_right = cv2.VideoCapture(3)
+            cam_wide = cv2.VideoCapture(2)
             cam_front.set(cv2.CAP_PROP_FPS, FRAME)
             cam_left.set(cv2.CAP_PROP_FPS, FRAME)
             cam_right.set(cv2.CAP_PROP_FPS, FRAME)
