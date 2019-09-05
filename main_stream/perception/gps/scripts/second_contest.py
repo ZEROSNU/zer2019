@@ -10,6 +10,7 @@ nodename = 'gps'
 active = True
 
 def signalResponse(data) :
+    global active
     if 'zero_monitor' in data.active_nodes :
         if nodename in data.active_nodes :
             active = True
@@ -170,7 +171,7 @@ count_12 = 0
 count_25 = 0
 
 def callback(msg):
-
+    global active
     location = [msg.Lat, msg.Long]
 
     global count_time
@@ -181,14 +182,15 @@ def callback(msg):
 
     for i in range(0,Mission_number):
         area_inout[i] = in_out(location, i)
-        print area_inout[i]
 
     for i in range(1,Mission_number):
 
         if area_inout[i] == 1:
             tmp = i
             t = t + 1
-
+    print t
+    print tmp
+    print '=========='
     if t == 1 or tmp == 33:
 
         if tmp == 33:
@@ -454,7 +456,7 @@ def mainloop():
 
     rospy.init_node('gps', anonymous=True)
     
-    rospy.Subscriber('Location_msg', Location, callback)
+    rospy.Subscriber('/Location_msg', Location, callback)
 
     rospy.spin()
 

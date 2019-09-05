@@ -1,12 +1,12 @@
 <launch>
   <node name = "lms1xx" pkg = "lms1xx" type = "LMS1xx_node" args = "_host:=169.254.37.213"/>
   <node name = "gps_setting" pkg = "rosserial_python" type = "serial_node.py" args = "_port:=/dev/ttyACM0"/>
-  <node pkg = "rosbag" type = "record" name = "record" args = "-a -o $(find zero_monitor)/data/dynamic/all_topics"/>
+  <!--node pkg = "rosbag" type = "record" name = "record" args = "-a -o $(find zero_monitor)/data/dynamic/all_topics"/>
   <node pkg = "rosbag" type = "record" name = "record_lidar" args = "/scan -o $(find zero_monitor)/data/dynamic/scan"/>
   <node pkg = "rosbag" type = "record" name = "record_raw_img" args = "/forward_camera/raw_img -o $(find zero_monitor)/data/dynamic/raw_img"/>
   <node pkg = "rosbag" type = "record" name = "record_traffic_img" args = "/traffic_image -o $(find zero_monitor)/data/dynamic/traffic_image"/>
   <node pkg = "rosbag" type = "record" name = "record_motion_state" args = "/motion_state -o $(find zero_monitor)/data/totaldynamic_bag/motion_state"/>
-  <node pkg = "rosbag" type = "record" name = "gps" args = "/gps -o $(find zero_monitor)/data/dynamic/gps"/>
+  <node pkg = "rosbag" type = "record" name = "gps" args = "/gps -o $(find zero_monitor)/data/dynamic/gps"/-->
   <!--
   contest parameters
   -->
