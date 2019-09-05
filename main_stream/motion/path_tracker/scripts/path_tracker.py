@@ -28,13 +28,18 @@ class tracker:
                 self.EMERGENCY_BRAKE = 1
                 self.NORMAL_TRACKING = 2
                 self.ESTIMATE_TRACKING = 3
+
+                self.HIGH_SPEED = 3.
+                self.LOW_SPEED = 1.
         
                 # Control variable
-                self.look_ahead_distance = 25
+                self.look_ahead_distance = 50
                 self.look_ahead_point= PoseStamped()
 
                 # Input manage
                 self.vehicle_state = VehicleState()
+
+                self.estimated_path = Path()
 
                 self.latest_generated_path = Path()
                 self.current_path = Path()
@@ -132,7 +137,7 @@ class tracker:
         def Path_estimate(self, initialize_time):       # TODO: Consider motion_state_buff[-1], it was parking or not?
                 #try:
                 passed_time = initialize_time - self.curvature_time_buff[-1]
-                
+                #print(len(self.current_path.poses))
                 # Estimate current vehicle state (position and orientation)
                 theta = self.vehicle_state.speed * self.curvature.curvature * passed_time
                 if self.curvature.curvature == 0.:
@@ -159,7 +164,17 @@ class tracker:
                         pose.pose.orientation.w = quaternion[3]
                         pose.pose.position.x = pose.pose.position.x - shift_x
                         pose.pose.position.y = pose.pose.position.y - shift_y
-
+                
+                idx = 0
+                for pose in self.current_path.poses:
+                        if pose.pose.position.y <= 0.:
+                                idx += 1
+                        else:
+                                break
+                
+                self.current_path.poses = self.current_path.poses[idx:]
+                #print('estimate len: ',len(self.current_path.poses))
+                self.estimated_path = copy.deepcopy(self.current_path)
                 return self.ESTIMATE_TRACKING
                         
                 #except:
@@ -170,6 +185,13 @@ class tracker:
         def Set_look_ahead_point(self, temp_control_mode):
                 #try:
                 # TODO
+                if self.velocity_level >= self.HIGH_SPEED:
+                        self.look_ahead_distance = 50
+                elif self.velocity_level > self.LOW_SPEED:
+                        self.look_ahead_distance = 30
+                else:
+                        self.look_ahead_distance = 10
+
                 list_len = len(self.current_path.poses)
                 if list_len <= 0:
                         return self.EMERGENCY_BRAKE
@@ -275,8 +297,8 @@ class tracker:
                         self.is_PARKING = False
 
       
-                initialize_time = self.curvature_time_buff[-1]
-
+                #initialize_time = self.curvature_time_buff[-1]
+                initialize_time = rospy.get_rostime().to_sec()
                 '''
                 2. Path update
                 '''
@@ -360,12 +382,14 @@ def mainloop() :
         rospy.Subscriber('/vehicle_pose', Pose, main_track.callbac_update_pose)
 
         curvature_pub = rospy.Publisher('/curvature', Curvature, queue_size=10)
-
+        
+        test_pub = rospy.Publisher('/estimated_path', Path, queue_size=10)
 
         rate = rospy.Rate(10) # 10hz
         while not rospy.is_shutdown():
                 if mainloop.active :
                         curvature_pub.publish(main_track.main_control_loop())
+                        test_pub.publish(main_track.estimated_path)
                 rate.sleep()
  
 if __name__ == '__main__':

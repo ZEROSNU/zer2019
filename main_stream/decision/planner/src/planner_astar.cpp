@@ -187,6 +187,10 @@ int main(int argc, char **argv){
                     comh.PublishPath(map_id, mseq, path, withgear);
                 }
             } else {
+                og::PathGeometric path(space_info);
+                if(nodeactivation){
+                    comh.PublishPath(map_id, mseq, path, withgear);
+                }
                 std::cout << "NO PATH FOUND" << std::endl;
             }
         }

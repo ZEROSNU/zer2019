@@ -1,4 +1,4 @@
-,.#!/usr/bin/env python
+#!/usr/bin/env python
 import rospy
 import numpy
 import math
@@ -119,7 +119,7 @@ p = [
     [37.24294720275367 , 126.77462978111419], #52
     [37.24296121698161 , 126.77423817859801], #53
     [37.24296030094653 , 126.773876080381], #54
-    [37.242975247647514 , 126.77355421529921] #55
+    [37.242975247647514 , 126.77355421529921], #55
     [37.23927805930314, 126.77317880044757], #56
     [37.23925884117297,126.77322708020984], #57
     [37.239461698966586,126.77335582624255], #58
@@ -181,6 +181,7 @@ def callback(msg):
 
     for i in range(0,Mission_number):
         area_inout[i] = in_out(location, i)
+        print area_inout[i]
 
     for i in range(1,Mission_number):
 
@@ -306,7 +307,7 @@ def callback(msg):
                 if active :
                     pub.publish(mission)
 
-            if count_12 > 0
+            if count_12 > 0:
                 mission.header.stamp = rospy.Time.now()
                 mission.header.seq = count_time
                 count_time = count_time +1
@@ -453,7 +454,7 @@ def mainloop():
 
     rospy.init_node('gps', anonymous=True)
     
-    rospy.Subscriber('location_msg', location, callback)
+    rospy.Subscriber('Location_msg', Location, callback)
 
     rospy.spin()
 

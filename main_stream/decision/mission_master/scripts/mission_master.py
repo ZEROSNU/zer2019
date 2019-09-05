@@ -70,7 +70,7 @@ def mainloop():
                         motion.motion_state="FORWARD_MOTION"
                 else:
                     motion.motion_state="FORWARD_MOTION"
-        elif taskstate.mission=="INTERSECTION_LEFT" and missionstate.mission_state=="JUST_LEFT":
+        elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="JUST_LEFT":
             motion.motion_state="LEFT_MOTION"
         elif taskstate.mission_state=="INTERSECTION_LEFT" and missionstate.mission_state=="INTERSECTION_LEFT":
             if lightstate.light_found:

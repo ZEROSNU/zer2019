@@ -172,7 +172,7 @@ def callback(msg):
 
     for i in range(0,Mission_number):
         area_inout[i] = in_out(location, i)
-
+        print area_inout[i]
     for i in range(1,Mission_number):
 
         if area_inout[i] == 1:
@@ -368,7 +368,7 @@ def mainloop():
 
     rospy.init_node('gps', anonymous=True)
     
-    rospy.Subscriber('location_msg', location, callback)
+    rospy.Subscriber('/Location_msg', Location, callback)
 
     rospy.spin()
 

@@ -63,7 +63,7 @@ def icb(data) :
     
 def ccb(data) :
     global steer
-    steer = np.arctan(1.7*data.curvature)/np.pi * 180
+    steer = np.arctan(1.7*data.curvature)/np.pi * 180 - 2
 
 
 

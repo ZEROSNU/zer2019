@@ -27,7 +27,9 @@ OBSTACLE_BUFFER = [49,23] # buff obstacles as much as circumscribed circle of th
 LANE_BUFFER = [1,23]
 ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
 
-DRIVING_VELOCITY = 0.7
+DRIVING_VELOCITY = 2.
+HIGH_VELOCITY = 3.
+LOW_VELOCITY = 1.
 
 class ImageMerger():
     def __init__(self):
@@ -79,7 +81,7 @@ class ImageMerger():
         middle_num = len(mid_cor)
         right_num = len(right_cor)
         '''
-        goalpose_y = 150
+        goalpose_y = 50
         if isinstance(self.merged_map, type(None)):
             mid_center_array = self.lane_map[goalpose_y, :]
         else:
@@ -135,15 +137,17 @@ class ImageMerger():
             self.mid_cor[1] = IMG_SIZE/2
         
     def set_goal(self):
-        self.velocity.velocity_level = DRIVING_VELOCITY
+        #self.velocity.velocity_level = DRIVING_VELOCITY
         if motion == "LEFT_MOTION":
             if is_left_cen:
+                self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
                 self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
                 self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
                 theta = ROTATION[0]
 
             else:
+                self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[0][0] = 255
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 self.pose.pose.position.x = -1
@@ -152,12 +156,14 @@ class ImageMerger():
                 
         elif motion == "RIGHT_MOTION":
             if is_right_cen:
+                self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
                 self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
                 self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
                 theta = ROTATION[2]
 
             else:
+                self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[0][IMG_SIZE - 1] = 255
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 self.pose.pose.position.x = 1
@@ -165,12 +171,14 @@ class ImageMerger():
                 theta = ROTATION[2]
                 
         elif motion == "FORWARD_MOTION":
+            self.velocity.velocity_level = HIGH_VELOCITY
             #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
                     
         elif motion == "HALT":
+            self.velocity.velocity_level = LOW_VELOCITY
             #self.lane_map[min(self.mid_cor[0] + 50, IMG_SIZE - 1)][self.mid_cor[1]] =  255
             if STOPLINE_PIXEL_VALUE in self.lane_map:
                 stop_line_y = np.where(self.lane_map==STOPLINE_PIXEL_VALUE)[0][0]
@@ -181,6 +189,7 @@ class ImageMerger():
             theta = ROTATION[1]
               
         else:
+            self.velocity.velocity_level = HIGH_VELOCITY
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
@@ -192,7 +201,7 @@ class ImageMerger():
         self.pose.pose.orientation.w = qframe[3]
         if not isinstance(motion, type(None)):
             if "SLOW" in motion:
-                self.velocity.velocity_level = DRIVING_VELOCITY
+                self.velocity.velocity_level = LOW_VELOCITY
 
 def lane_callback(img):
     merger.set_lane_map(img)
@@ -214,8 +223,9 @@ if __name__ == "__main__":
     code for activate and deactivate the node
     '''
     isactive = True
-    nodename = 'car_frame'
+    nodename = 'map_merger'
     def signalResponse(data) :
+        global isactive
         if 'zero_monitor' in data.active_nodes :
             if nodename in data.active_nodes :
                 isactive = True
@@ -252,7 +262,8 @@ if __name__ == "__main__":
             
             merged_arr = ros_numpy.numpify(merged_img)
 
-            obstacle_map_pub.publish(merged_img)
+            if isactive:
+                obstacle_map_pub.publish(merged_img)
             
             occupancy.data = list(np.flipud(merged_arr).ravel().astype(np.int8))
             
@@ -266,20 +277,24 @@ if __name__ == "__main__":
             occupancy.info.origin.position.z = 0
             occupancy.info.origin.orientation.z = 0
             occupancy.info.origin.orientation.w = 1
-            local_map_pub.publish(occupancy)
+            if isactive:
+                local_map_pub.publish(occupancy)
 
             merger.pose.header.stamp = rospy.Time.now()
             merger.pose.header.frame_id = "car_frame"
-            goal_pose_pub.publish(merger.pose)
+            if isactive:
+                goal_pose_pub.publish(merger.pose)
 
             merger.velocity.header.stamp = rospy.Time.now()
             merger.velocity.header.frame_id = "car_frame"
-            velocity_level_pub.publish(merger.velocity)
+            if isactive:
+                velocity_level_pub.publish(merger.velocity)
         
         else:
             merged_img = ros_numpy.msgify(Image, np.zeros((IMG_SIZE,IMG_SIZE),np.uint8), encoding='mono8')
             merged_arr = ros_numpy.numpify(merged_img)
-            obstacle_map_pub.publish(merged_img)
+            if isactive:    
+                obstacle_map_pub.publish(merged_img)
             occupancy = OccupancyGrid()
             occupancy.data = list(np.flipud(merged_arr).ravel().astype(np.int8))
             occupancy.header.stamp = rospy.Time.now()
@@ -292,17 +307,20 @@ if __name__ == "__main__":
             occupancy.info.origin.position.z = 0
             occupancy.info.origin.orientation.z = 0
             occupancy.info.origin.orientation.w = 1
-            
-            obstacle_map_pub.publish(merged_img)
-            local_map_pub.publish(occupancy)
+            if isactive:
+                obstacle_map_pub.publish(merged_img)
+            if isactive:
+                local_map_pub.publish(occupancy)
 
             pose = PoseStamped()
             pose.header.frame_id = "car_frame"
-            goal_pose_pub.publish(pose)
+            if isactive:
+                goal_pose_pub.publish(pose)
 
             velocity = VelocityLevel()
             velocity.header.frame_id = "car_frame"
-            velocity_level_pub.publish(velocity)
+            if isactive:
+                velocity_level_pub.publish(velocity)
         
 
 
