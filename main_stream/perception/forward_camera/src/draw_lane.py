@@ -793,14 +793,14 @@ def filter_colors(image):
     #white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
     #blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
     
-    hsv_mask = yellow_mask# + blue_mask
+    hsv_mask = yellow_mask + blue_mask
 
     white_image = cv2.bitwise_and(image, image, mask=white_mask)
     hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
     # Combine the two above images
-    #image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
-    image2 = white_image
+    image2 = cv2.addWeighted(white_image, 0.1, hsv_image, 1., 0.)
+    #image2 = white_image
     if len (left_coeff_buffer) == 3:
         left_y = int(left_coeff_buffer[2][2])
         right_y = int(right_coeff_buffer[2][2])

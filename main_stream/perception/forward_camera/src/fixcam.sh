@@ -1,8 +1,8 @@
 #!/bin/bash
 wbt=4500
-exp=2000
+exp=100
 wbt_front=4000
-exp_front=1000
+exp_front=50
 v4l2-ctl -d /dev/video1 --set-ctrl=white_balance_temperature_auto=0
 v4l2-ctl -d /dev/video1 --set-ctrl=white_balance_temperature=${wbt}
 v4l2-ctl -d /dev/video1 --set-ctrl=exposure_auto_priority=0
