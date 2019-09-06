@@ -26,9 +26,9 @@ mission = MissionState()
 count_time = 0
 
 
-Mission_number = 33
+Mission_number = 34
 
-limit = 0.0001
+limit = 0.001
 
 def slope(X1, X2): 
     return (X2[1] - X1[1]) / (X2[0] - X1[0])
@@ -56,6 +56,7 @@ def in_out(location, n):
     S3 = area_3 (location, data[n][2], data[n][3])
     S4 = area_3 (location, data[n][3], data[n][0])
     tmp = S / (S1 + S2 + S3 + S4)
+    print (tmp)
 
     #print ( tmp )
     if abs (tmp - 1 ) < limit:
@@ -85,8 +86,10 @@ p = [
     [37.23985943132482 , 126.7740719117088], #17
     [37.239949115175776 , 126.77381441964337], #18
     [37.240064422827366 , 126.77351937665173], #19
-    [37.24022243673009 , 126.7732864631547], #20
-    [37.24031587061285 , 126.77305287792262], #21
+    [37.24020192434464, 126.7732779778404],  # 20
+    [37.2402809311933, 126.77304194344708], # 21
+    # [37.24022243673009 , 126.7732864631547], #20
+    # [37.24031587061285 , 126.77305287792262], #21
     [37.239965171132866 , 126.77440598369162], #22
     [37.24004417822965 , 126.7741860425524], #23
     [37.24017016234784 , 126.77395805478614], #24
@@ -137,7 +140,7 @@ data = [
     [p[6],p[7],p[13],p[12]], # 4
     [p[7],p[8],p[14],p[13]], # 5
     [p[8],p[9],p[15],p[14]], # 6
-    [p[10],p[2],p[7],p[6]], # 7
+    [p[10],p[11],p[16],p[17]], # 7
     [p[12],p[13],p[19],p[18]], # 8
     [p[14],p[15],p[21],p[20]], # 9
     [p[16],p[17],p[23],p[22]], # 10
@@ -175,7 +178,7 @@ def callback(msg):
     location = [msg.Lat, msg.Long]
 
     global count_time
-    global count_4
+    global count_4, count_12, count_25
     area_inout = numpy.zeros(shape = (Mission_number,1))
     tmp = 0
     t = 0
@@ -183,14 +186,14 @@ def callback(msg):
     for i in range(0,Mission_number):
         area_inout[i] = in_out(location, i)
 
-    for i in range(1,Mission_number):
+    print (area_inout)
+
+    for i in range(0,Mission_number):
 
         if area_inout[i] == 1:
             tmp = i
             t = t + 1
-    print t
-    print tmp
-    print '=========='
+
     if t == 1 or tmp == 33:
 
         if tmp == 33:
@@ -325,6 +328,7 @@ def callback(msg):
             count_time = count_time +1
             mission.header.frame_id = 'gps'
             mission.mission_state = 'DRIVING_SECTION'
+            count_12 = count_12 + 1
 
             if active :
                 pub.publish(mission)
@@ -335,6 +339,7 @@ def callback(msg):
             count_time = count_time +1
             mission.header.frame_id = 'gps'
             mission.mission_state = 'INTERSECTION_STRAIGHT'
+            count_12 = count_12 + 1
 
             if active :
                 pub.publish(mission)
@@ -387,6 +392,7 @@ def callback(msg):
             count_time = count_time +1
             mission.header.frame_id = 'gps'
             mission.mission_state = 'DRIVING_SECTION'
+            count_25 = count_25 + 1
 
             if active :
                 pub.publish(mission)
@@ -397,6 +403,7 @@ def callback(msg):
             count_time = count_time +1
             mission.header.frame_id = 'gps'
             mission.mission_state = 'INTERSECTION_LEFT'
+            count_25 = count_25 + 1
 
             if active :
                 pub.publish(mission)
