@@ -27,6 +27,9 @@ OBSTACLE_BUFFER = [49,23] # buff obstacles as much as circumscribed circle of th
 LANE_BUFFER = [1,23]
 ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
 
+STOP_TIME = 3 # sec
+CHANGE_LINE_TIME = 3 # sec
+
 DRIVING_VELOCITY = 2.
 HIGH_VELOCITY = 3.
 LOW_VELOCITY = 1.
@@ -39,11 +42,14 @@ class ImageMerger():
         self.left_cor = [0, 0] #upper bound of left lane
         self.right_cor = [0, 0] #upper bound if right lane
         self.mid_cor = [0, 0] #medium of two coors
+        self.turn_count = 0
+        self.count = 0
         self.pose = PoseStamped()
         self.velocity = VelocityLevel()
 
     def set_lane_map(self, img):
         self.lane_map = ros_numpy.numpify(img)
+        
     def set_lidar_map(self, img):
         self.lidar_map = ros_numpy.numpify(img)
         
@@ -52,14 +58,13 @@ class ImageMerger():
         #self.lane_map /= 2
 
         obst_kernel = np.ones((OBSTACLE_BUFFER[0],OBSTACLE_BUFFER[1]),np.uint8)
-        lane_kernel = np.ones((LANE_BUFFER[0],LANE_BUFFER[1]),np.uint8)
         self.lidar_map = cv2.dilate(self.lidar_map, obst_kernel, iterations=1)
-        #self.lane_map = cv2.dilate(self.lane_map, lane_kernel, iterations=1)
         
         self.merged_map = self.lidar_map | self.lane_map
-        return ros_numpy.msgify(Image, self.merged_map, encoding='mono8')
+        
 
     def find_lane_cor(self):
+        global is_left_cen, is_right_cen
         '''
         left_array = self.lane_map[1:, 0]
         mid_array = self.lane_map[1, :]
@@ -81,6 +86,22 @@ class ImageMerger():
         middle_num = len(mid_cor)
         right_num = len(right_cor)
         '''
+        
+        if not isinstance(self.merged_map, type(None)):
+            for i in range(IMG_SIZE):
+                if len(np.where(self.merged_map[i,:] == 0)[0]) < 10:
+                    lane_mask = self.merged_map == 100
+                    if not is_left_cen and not is_right_cen:
+                        pass
+                    elif not is_left_cen:
+                        lane_mask[:,IMG_SIZE/3*2:] = False
+                    elif not is_right_cen:
+                        lane_mask[:,:IMG_SIZE/3] = False
+                    else:
+                        pass
+                    self.merged_map[lane_mask] = 0
+
+
         goalpose_y = 50
         if isinstance(self.merged_map, type(None)):
             mid_center_array = self.lane_map[goalpose_y, :]
@@ -150,18 +171,24 @@ class ImageMerger():
                 self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[0][0] = 255
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
-                self.pose.pose.position.x = -1
-                self.pose.pose.position.y = 3
+                if self.turn_count <= CHANGE_LINE_TIME * MISSION_RATE:
+                    self.pose.pose.position.x = -1
+                    self.pose.pose.position.y = 3
+                    self.turn_count += 1
+                else:
+                    self.velocity.velocity_level = DRIVING_VELOCITY
+                    self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
+                    self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
                 theta = ROTATION[0]
                 
         elif motion == "RIGHT_MOTION":
-            if is_right_cen:
-                self.velocity.velocity_level = LOW_VELOCITY
-                #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
-                self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
-                self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
-                theta = ROTATION[2]
-
+            #if is_right_cen:
+            self.velocity.velocity_level = LOW_VELOCITY
+            #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
+            self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
+            self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
+            theta = ROTATION[2]
+            '''
             else:
                 self.velocity.velocity_level = LOW_VELOCITY
                 #self.lane_map[0][IMG_SIZE - 1] = 255
@@ -169,6 +196,7 @@ class ImageMerger():
                 self.pose.pose.position.x = 1
                 self.pose.pose.position.y = 3
                 theta = ROTATION[2]
+            '''
                 
         elif motion == "FORWARD_MOTION":
             self.velocity.velocity_level = HIGH_VELOCITY
@@ -185,14 +213,24 @@ class ImageMerger():
             else:
                 stop_line_y = -50
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
-            self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
+            if self.count <= STOP_TIME*MISSION_RATE:
+                self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
+            else:
+                self.pose.pose.position.y = 5
+            self.count += 1
             theta = ROTATION[1]
               
         else:
-            self.velocity.velocity_level = HIGH_VELOCITY
+            self.velocity.velocity_level = LOW_VELOCITY
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
+        
+        if motion != "HALT":
+            self.count = 0
+        if motion != "LEFT_MOTION":
+            self.turn_count = 0
+        
         self.lane_map[self.lane_map==STOPLINE_PIXEL_VALUE] = 0
         qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)   
         self.pose.pose.orientation.x = qframe[0]
@@ -256,10 +294,10 @@ if __name__ == "__main__":
             occupancy = OccupancyGrid()
             
 
-            merger.find_lane_cor()
             merger.set_goal()
-            merged_img = merger.merge()
-            
+            merger.merge()
+            merger.find_lane_cor()
+            merged_img = ros_numpy.msgify(Image, merger.merged_map, encoding='mono8')
             merged_arr = ros_numpy.numpify(merged_img)
 
             if isactive:
@@ -290,8 +328,8 @@ if __name__ == "__main__":
             if isactive:
                 velocity_level_pub.publish(merger.velocity)
         
-        else:
-            merged_img = ros_numpy.msgify(Image, np.zeros((IMG_SIZE,IMG_SIZE),np.uint8), encoding='mono8')
+        elif not isinstance(merger.merged_map, type(None)):
+            merged_img = ros_numpy.msgify(Image, merger.merged_map, encoding='mono8')
             merged_arr = ros_numpy.numpify(merged_img)
             if isactive:    
                 obstacle_map_pub.publish(merged_img)

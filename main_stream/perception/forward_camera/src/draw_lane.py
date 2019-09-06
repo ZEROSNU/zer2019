@@ -34,17 +34,18 @@ CONFIG_FILE = '/home/snuzero/catkin_ws/src/zer2019/main_stream/perception/forwar
 YAML_CONFIG = yaml.load(open(CONFIG_FILE))
 
 # Maximum offset pixels from previous lane polynomial
-LANE_ROI_OFFSET = (-100,100)
+LANE_ROI_OFFSET_LEFT = (-100,50)
+LANE_ROI_OFFSET_RIGHT = (-50,100)
 
 # Maximum offset pixels from previous lane polynomial (consider turning direction)
-LANE_ROI_LEFT = (-40,20) # respectively, lower bound and upper bound
-LANE_ROI_RIGHT = (-20,40)
+LANE_ROI_LEFT = (-30,50) # respectively, lower bound and upper bound
+LANE_ROI_RIGHT = (-50,30)
 
 # Minimum pixel num for draw line
-CANDIDATE_THRES = 4000
+CANDIDATE_THRES = 8000
 
 # pixel Thresholds
-CENTER_LINE_THRES = 20000
+CENTER_LINE_THRES = 10000
 CROSSWALK_THRES = YAML_CONFIG['CROSSWALK_THRES']
 STOP_LINE_THRES = YAML_CONFIG['STOP_LINE_THRES']
 
@@ -290,44 +291,40 @@ def draw_line_with_color(image_in):
             else:
                 coeff_left = left_coeff_buffer[2]
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH 
         else:
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH
     elif CROSSWALK:
         print("ENTER CROSSWALK!")
         ROBUST_SEARCH = True
         NO_LANE_COUNT += 1
-        '''
         if NO_LANE_COUNT < 5:
             if len(left_coeff_buffer) < 3:
                 coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             else:
                 coeff_left = left_coeff_buffer[2]
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH
         else:
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
-        '''
-        coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
-        coeff_right = np.array([10e-10,0,int(IMAGE_SIZE/2 + LANE_WIDTH/2)])
+            coeff_right[2] +=LANE_WIDTH
         
     else:
         if len(left_coeff_buffer) < 3:
             last_left_coeff = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             last_left_f = np.poly1d(last_left_coeff)
             last_right_coeff = np.array(last_left_coeff)
-            last_right_coeff[2] += LANE_WIDTH
+            last_right_coeff[2] +=LANE_WIDTH
             last_right_f = np.poly1d(last_right_coeff)
             if ROBUST_SEARCH:
-                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
-                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET_LEFT[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET_LEFT[1])]
                 
-                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
-                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET_RIGHT[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET_RIGHT[1])]
             else:
                 left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
                 left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
@@ -343,7 +340,7 @@ def draw_line_with_color(image_in):
                     coeff_right = np.polyfit(right_x_candidates,right_y_candidates,2)
                 else:
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH
             elif len(right_x_candidates) > CANDIDATE_THRES:
                 
                 NO_LANE_COUNT = 0
@@ -355,6 +352,7 @@ def draw_line_with_color(image_in):
                 print("NO LANE!!")
                 coeff_left = last_left_coeff
                 coeff_right = last_right_coeff
+                ROBUST_SEARCH = True
 
             left_coeff_buffer.append(coeff_left)
             right_coeff_buffer.append(coeff_right)
@@ -366,11 +364,11 @@ def draw_line_with_color(image_in):
             last_right_f = np.poly1d(last_right_coeff)
 
             if ROBUST_SEARCH:
-                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
-                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET[1])]
+                left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET_LEFT[1])]
+                left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_OFFSET_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_OFFSET_LEFT[1])]
                 
-                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
-                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET[1])]
+                right_x_candidates = x_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET_RIGHT[1])]
+                right_y_candidates = y_vals[(y_vals - last_right_f(x_vals) > LANE_ROI_OFFSET_RIGHT[0]) & (y_vals - last_right_f(x_vals) < LANE_ROI_OFFSET_RIGHT[1])]
             else:
                 left_x_candidates = x_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
                 left_y_candidates = y_vals[(y_vals - last_left_f(x_vals) > LANE_ROI_LEFT[0]) & (y_vals - last_left_f(x_vals) < LANE_ROI_LEFT[1])]
@@ -410,7 +408,7 @@ def draw_line_with_color(image_in):
                     rsquared_prev2 = calculate_rsquared(x_vals, y_vals, right_prev_f2)
                     rsquared_current_right = calculate_rsquared(x_vals, y_vals, right_current_f)
 
-                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_left)+10E-10
+                    exp_sum = math.exp(rsquared_prev1) + math.exp(rsquared_prev2) + math.exp(rsquared_current_right)+10E-10
                     weight_prev1 = math.exp(rsquared_prev1) / exp_sum
                     weight_prev2 = math.exp(rsquared_prev2) / exp_sum
                     weight_current = math.exp(rsquared_current_right) / exp_sum
@@ -418,7 +416,7 @@ def draw_line_with_color(image_in):
                     coeff_right = weight_prev1 * right_coeff_buffer[1] + weight_prev2 * right_coeff_buffer[2] + weight_current * coeff_right
                 else:
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH 
             
             elif len(right_x_candidates) > CANDIDATE_THRES:
                 
@@ -453,11 +451,12 @@ def draw_line_with_color(image_in):
                     else:
                         coeff_left = left_coeff_buffer[2]
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH 
                 else:
                     coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH 
+                    ROBUST_SEARCH = True
             if (len(left_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[left_y_candidates,left_x_candidates]) > 200) > 1000:
                 is_center_left = True
             if (len(right_x_candidates) > CENTER_LINE_THRES) or np.sum(np.sum(image[right_y_candidates,right_x_candidates])> 200) > 1000:
@@ -469,36 +468,40 @@ def draw_line_with_color(image_in):
             if abs(coeff_left[2] - coeff_right[2]) < OVERLAP_THRES:
                 if coeff_left[2] < IMAGE_SIZE/2:
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH 
                 else:
                     coeff_left = np.array(coeff_right)
                     coeff_left[2] -= LANE_WIDTH
+            
             
             # 2) two lines go to another direction
             if coeff_left[0]*coeff_right[0] < 0:
                 # find better approximated line with rsquared value
                 if rsquared_current_left >= rsquared_current_right:
                     coeff_right = np.array(coeff_left)
-                    coeff_right[2] += LANE_WIDTH
+                    coeff_right[2] +=LANE_WIDTH
                 else:
                     coeff_left = np.array(coeff_right)
                     coeff_left[2] -= LANE_WIDTH
-
+            
             # 3) fix line location
-            if coeff_left[2] > IMAGE_SIZE/2 and coeff_right[2] > IMAGE_SIZE/2:
-                coeff_left = np.array(coeff_right)
+            
+            left_f = np.poly1d(coeff_left)
+            right_f = np.poly1d(coeff_right)
+            if coeff_left[2] > IMAGE_SIZE/3*2 and coeff_right[2] > IMAGE_SIZE/3*2:
+                coeff_right = np.array(coeff_left)
                 coeff_left[2] -= LANE_WIDTH
             
-            if coeff_right[2] < IMAGE_SIZE/2 and coeff_left[2] < IMAGE_SIZE/2:
-                coeff_right = np.array(coeff_left)
-                coeff_right[2] += LANE_WIDTH
+            if coeff_right[2] < IMAGE_SIZE/3 and coeff_left[2] < IMAGE_SIZE/3:
+                coeff_left = np.array(coeff_right)
+                coeff_right[2] +=LANE_WIDTH 
             
             # 4) when the line is too much curved
             if abs(coeff_left[0]) > 0.001 or abs(coeff_right[0] > 0.001):
                 coeff_left = left_coeff_buffer[2]
                 coeff_right = np.array(coeff_left)
-                coeff_right[2] += LANE_WIDTH
-
+                coeff_right[2] +=LANE_WIDTH 
+            
             # Updating buffer            
             left_coeff_buffer[:2] = left_coeff_buffer[1:]
             left_coeff_buffer[2] = coeff_left
@@ -550,7 +553,7 @@ def draw_line_with_color(image_in):
     annotated_image = weighted_img(line_img, image_in)
     return masked_img, annotated_image, is_center_left, is_center_right
         
-
+'''
 def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
     global NO_LANE_COUNT, CROSSWALK
 
@@ -568,7 +571,7 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
         else:
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH
     elif CROSSWALK:
         print("ENTER CROSSWALK!")
         if NO_LANE_COUNT < 5:
@@ -579,7 +582,7 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
         else:
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH 
     else:
         NO_LANE_COUNT = 0
 
@@ -685,11 +688,11 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
             print("No line!")
             coeff_left = np.array([10e-10,0,int(IMAGE_SIZE/2 - LANE_WIDTH/2)])
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH
         elif left_lines and right_lines == []:
             coeff_left = np.polyfit(left_lines_x, left_lines_y, 2)
             coeff_right = np.array(coeff_left)
-            coeff_right[2] += LANE_WIDTH
+            coeff_right[2] +=LANE_WIDTH
         elif right_lines and left_lines == []:
             coeff_right = np.polyfit(right_lines_x, right_lines_y, 2)
             coeff_left = np.array(coeff_right)
@@ -737,7 +740,7 @@ def draw_lines(img, lines, color=[255, 0, 0], thickness=5):
         else:
             right_coeff_buffer[:2] = right_coeff_buffer[1:]
             right_coeff_buffer[2] = coeff_right
-        
+'''     
         
 
 def hough_lines(img, rho, theta, threshold, min_line_len, max_line_gap):
@@ -788,14 +791,14 @@ def filter_colors(image):
     blue_mask = cv2.inRange(hsv, LOWER_BLUE, UPPER_BLUE)
     
     # Eliminating small unnecessary dots (morphologyEx)
-    #kernel = np.ones((3,3), np.uint8)
-    #yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
-    #white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
-    #blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
+    kernel = np.ones((5,5), np.uint8)
+    yellow_mask_mor = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
+    white_mask_mor = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
+    blue_mask_mor = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
     
-    hsv_mask = yellow_mask + blue_mask
+    hsv_mask = yellow_mask_mor + blue_mask_mor
 
-    white_image = cv2.bitwise_and(image, image, mask=white_mask)
+    white_image = cv2.bitwise_and(image, image, mask=white_mask_mor)
     hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
     # Combine the two above images
@@ -805,7 +808,7 @@ def filter_colors(image):
         left_y = int(left_coeff_buffer[2][2])
         right_y = int(right_coeff_buffer[2][2])
         
-        white_vals = sum(white_mask[left_y:right_y,:]>0)
+        white_vals = sum(white_mask_mor[left_y:right_y,:]>0)
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)
     

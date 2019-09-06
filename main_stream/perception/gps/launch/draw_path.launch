@@ -1,0 +1,5 @@
+<launch>
+  <param name = '/dir' value = "$(find gps)/data/"/>
+  <node name = 'to_map' pkg = 'gps' type = 'to_map.py'/>
+  <node name = 'playbag' pkg = 'rosbag' type = 'play' args = '-r 30 $(find zero_monitor)/data/fucking_gps_2019-09-05-23-48-13.bag'/>
+</launch>
