@@ -159,6 +159,8 @@ class ImageMerger():
             self.mid_cor[1] = IMG_SIZE/2
         
     def set_goal(self):
+        global motion
+        print(motion)
         #self.velocity.velocity_level = DRIVING_VELOCITY
         if motion == "LEFT_MOTION":
             if is_left_cen:
@@ -183,21 +185,19 @@ class ImageMerger():
                 theta = ROTATION[0]
                 
         elif motion == "RIGHT_MOTION":
-            #if is_right_cen:
-            velocity = LOW_VELOCITY
-            #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
-            self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
-            self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
-            theta = ROTATION[2]
-            '''
+            if is_right_cen:
+                velocity = LOW_VELOCITY
+                self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
+                self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
+                theta = ROTATION[2]
+            
             else:
-                self.velocity.velocity_level = LOW_VELOCITY
-                #self.lane_map[0][IMG_SIZE - 1] = 255
+                velocity = LOW_VELOCITY
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 self.pose.pose.position.x = 1
                 self.pose.pose.position.y = 3
                 theta = ROTATION[2]
-            '''
+            
                 
         elif motion == "FORWARD_MOTION":
             velocity = HIGH_VELOCITY
@@ -214,28 +214,22 @@ class ImageMerger():
             else:
                 stop_line_y = -50
             if stop_line_y != -50:
-                if self.count <= STOP_TIME*MISSION_RATE:
-                    self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
-                    velocity = 0
-                else:
-                    self.pose.pose.position.y = 4.5
-                self.count += 1
-                print(self.count)
+                velocity = 0
+            self.pose.pose.position.y = 4.5
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             theta = ROTATION[1]
-              
+        
         else:
             velocity = LOW_VELOCITY
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
-        
+    
         if motion != "HALT":
-            self.count = 0
+            self.lane_map[self.lane_map==STOPLINE_PIXEL_VALUE] = 0
         if motion != "LEFT_MOTION":
             self.turn_count = 0
-        
-        self.lane_map[self.lane_map==STOPLINE_PIXEL_VALUE] = 0
+            
         qframe = tf_conversions.transformations.quaternion_from_euler(0, 0, theta)   
         self.pose.pose.orientation.x = qframe[0]
         self.pose.pose.orientation.y = qframe[1] 
@@ -244,6 +238,7 @@ class ImageMerger():
         if not isinstance(motion, type(None)):
             if "SLOW" in motion:
                 velocity = LOW_VELOCITY
+        print(velocity)
         return velocity
         
 

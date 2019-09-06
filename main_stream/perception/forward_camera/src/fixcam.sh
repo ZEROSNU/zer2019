@@ -1,6 +1,6 @@
 #!/bin/bash
 wbt=4500
-exp=8
+exp=10
 wbt_front=4000
 exp_front=7
 v4l2-ctl -d /dev/video1 --set-ctrl=white_balance_temperature_auto=0
