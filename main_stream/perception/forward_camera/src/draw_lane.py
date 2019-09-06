@@ -791,14 +791,14 @@ def filter_colors(image):
     blue_mask = cv2.inRange(hsv, LOWER_BLUE, UPPER_BLUE)
     
     # Eliminating small unnecessary dots (morphologyEx)
-    #kernel = np.ones((3,3), np.uint8)
-    #yellow_mask = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
-    #white_mask = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
-    #blue_mask = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
+    kernel = np.ones((5,5), np.uint8)
+    yellow_mask_mor = cv2.morphologyEx(yellow_mask, cv2.MORPH_OPEN, kernel)
+    white_mask_mor = cv2.morphologyEx(white_mask, cv2.MORPH_OPEN, kernel)
+    blue_mask_mor = cv2.morphologyEx(blue_mask, cv2.MORPH_OPEN, kernel)
     
-    hsv_mask = yellow_mask + blue_mask
+    hsv_mask = yellow_mask_mor + blue_mask_mor
 
-    white_image = cv2.bitwise_and(image, image, mask=white_mask)
+    white_image = cv2.bitwise_and(image, image, mask=white_mask_mor)
     hsv_image = cv2.bitwise_and(image, image, mask=hsv_mask)
 
     # Combine the two above images
@@ -808,7 +808,7 @@ def filter_colors(image):
         left_y = int(left_coeff_buffer[2][2])
         right_y = int(right_coeff_buffer[2][2])
         
-        white_vals = sum(white_mask[left_y:right_y,:]>0)
+        white_vals = sum(white_mask_mor[left_y:right_y,:]>0)
         crosswalk_lines = np.where((white_vals > CROSSWALK_THRES) & (white_vals < STOP_LINE_THRES))
         stop_lines = np.where(white_vals >= STOP_LINE_THRES)
     
