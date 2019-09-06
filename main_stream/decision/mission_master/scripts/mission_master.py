@@ -92,10 +92,10 @@ def mainloop():
         elif taskstate.mission_state=="OBSTACLE_SUDDEN" and missionstate.mission_state=="OBSTACLE_SUDDEN":
             motion.motion_state="FORWARD_MOTION_SLOW"
         elif taskstate.mission_state=="CROSSWALK":
-            motion.motion_state="HALT"
-        elif taskstate.mission_state=="SCHOOL_ZONE" and missionstate.mission_state=="SCHOOL_ZONE":
+            motion.motion_state="FORWARD_MOTION"
+        elif missionstate.mission_state=="SCHOOL_ZONE":
             motion.motion_state="FORWARD_MOTION_SLOW"
-        elif taskstate.mission_state=="SPEED_BUST" and missionstate.mission_state=="SPEED_BUST":
+        elif missionstate.mission_state=="SPEED_BUST":
             motion.motion_state="FORWARD_MOTION_SLOW"
         #elif missionstate.mission_state=="READY_TO_PARK":
             #motion.motion_state="FORWARD_MOTION"
