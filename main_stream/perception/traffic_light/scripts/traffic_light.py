@@ -61,46 +61,48 @@ def callback(data):
     tl_img_path = '/home/snuzero/catkin_ws/src/zer2019/core/zero_monitor/data/traffic_light/test.jpg'
     
     cv2.imwrite(tl_img_path,bgr)
-
-    with open(tl_path,'r') as f:
-        state = f.read()
-    if state == 'no_signal':
-        light.light_found = False
-        light.red = False
-        light.yellow = False
-        light.green = False
-        light.left = False
-    elif state == 'red':
-        light.light_found = True
-        light.red = True
-        light.yellow = False
-        light.green = False
-        light.left = False
-    elif state == 'yellow':
-        light.light_found = True
-        light.red = False
-        light.yellow = True
-        light.green = False
-        light.left = False
-    elif state == 'green':
-        light.light_found = True
-        light.red = False
-        light.yellow = False
-        light.green = True
-        light.left = False
-    elif state == 'red_left':
-        light.light_found = True
-        light.red = True
-        light.yellow = False
-        light.green = False
-        light.left = True
-    elif state == 'green_left':
-        light.light_found = True
-        light.red = False
-        light.yellow = False
-        light.green = True
-        light.left = True
-    
+    try:
+        with open(tl_path,'r') as f:
+            state = f.read()
+        if state == 'no_signal':
+            light.light_found = False
+            light.red = False
+            light.yellow = False
+            light.green = False
+            light.left = False
+        elif state == 'red':
+            light.light_found = True
+            light.red = True
+            light.yellow = False
+            light.green = False
+            light.left = False
+        elif state == 'yellow':
+            light.light_found = True
+            light.red = False
+            light.yellow = True
+            light.green = False
+            light.left = False
+        elif state == 'green':
+            light.light_found = True
+            light.red = False
+            light.yellow = False
+            light.green = True
+            light.left = False
+        elif state == 'red_left':
+            light.light_found = True
+            light.red = True
+            light.yellow = False
+            light.green = False
+            light.left = True
+        elif state == 'green_left':
+            light.light_found = True
+            light.red = False
+            light.yellow = False
+            light.green = True
+            light.left = True
+    except:
+        pass
+        
 
     
     

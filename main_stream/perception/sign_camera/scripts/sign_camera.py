@@ -57,27 +57,29 @@ def callback(data):
     sign_img_path = '/home/snuzero/catkin_ws/src/zer2019/core/zero_monitor/data/sign/test.jpg'
     
     cv2.imwrite(sign_img_path,bgr)
-
-    with open(sign_path,'r') as f:
-        state = f.read()
-    if state == "no_sign":
-        task.mission_state = "DRIVING_SECTION"
-    elif state == "forward":
-        task.mission_state = "DRIVING_SECTION"
-    elif state == "turn_left":
-        task.mission_state = "INTERSECTION_LEFT"
-    elif state == "turn_right":
-        task.mission_state = "INTERSECTION_RIGHT"
-    elif state == "slow":
-        task.mission_state = "SCHOOL_ZONE"
-    elif state == "crosswalk":
-        task.mission_state = "CROSSWALK"
-    elif state == "static_obstacle":
-        task.mission_state = "OBSTACLE_STATIC"
-    elif state == "dynamic_obstacle":
-        task.mission_state = "OBSTACLE_SUDDEN"
-    elif state == "parking":
-        task.mission_state = "PARKING"
+    try:
+        with open(sign_path,'r') as f:
+            state = f.read()
+        if state == "no_sign":
+            task.mission_state = "DRIVING_SECTION"
+        elif state == "forward":
+            task.mission_state = "DRIVING_SECTION"
+        elif state == "turn_left":
+            task.mission_state = "INTERSECTION_LEFT"
+        elif state == "turn_right":
+            task.mission_state = "INTERSECTION_RIGHT"
+        elif state == "slow":
+            task.mission_state = "SCHOOL_ZONE"
+        elif state == "crosswalk":
+            task.mission_state = "CROSSWALK"
+        elif state == "static_obstacle":
+            task.mission_state = "OBSTACLE_STATIC"
+        elif state == "dynamic_obstacle":
+            task.mission_state = "OBSTACLE_SUDDEN"
+        elif state == "parking":
+            task.mission_state = "DRIVING_SECTION"
+    except:
+        pass
         
         
 

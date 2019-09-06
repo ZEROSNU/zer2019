@@ -201,7 +201,7 @@ def callback(msg):
             mission.header.seq = count_time
             count_time = count_time +1
             mission.header.frame_id = 'gps'
-            mission.mission_state = 'PARKING_READY'
+            mission.mission_state = 'DRIVING_SECTION'
 
             if active :
                 pub.publish(mission)
@@ -211,7 +211,7 @@ def callback(msg):
             mission.header.seq = count_time
             count_time = count_time +1
             mission.header.frame_id = 'gps'
-            mission.mission_state = 'READY_TO_PARK'
+            mission.mission_state = 'DRIVING_SECTION'
 
             if active :
                 pub.publish(mission)
@@ -221,7 +221,7 @@ def callback(msg):
             mission.header.seq = count_time
             count_time = count_time +1
             mission.header.frame_id = 'gps'
-            mission.mission_state = 'PARKING'
+            mission.mission_state = 'DRIVING_SECTION'
 
             if active :
                 pub.publish(mission)
