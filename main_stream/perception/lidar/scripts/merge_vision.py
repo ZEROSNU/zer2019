@@ -29,6 +29,7 @@ ROTATION = [3*np.pi/4, np.pi/2, np.pi/4]
 
 STOP_TIME = 3 # sec
 CHANGE_LINE_TIME = 3 # sec
+MISSION_RATE = 10
 
 DRIVING_VELOCITY = 2.
 HIGH_VELOCITY = 3.
@@ -161,14 +162,14 @@ class ImageMerger():
         #self.velocity.velocity_level = DRIVING_VELOCITY
         if motion == "LEFT_MOTION":
             if is_left_cen:
-                self.velocity.velocity_level = LOW_VELOCITY
+                velocity= LOW_VELOCITY
                 #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
                 self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
                 self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
                 theta = ROTATION[0]
 
             else:
-                self.velocity.velocity_level = LOW_VELOCITY
+                velocity = LOW_VELOCITY
                 #self.lane_map[0][0] = 255
                 self.lane_map[self.lane_map == LANE_PIXEL_VALUE] = 0
                 if self.turn_count <= CHANGE_LINE_TIME * MISSION_RATE:
@@ -176,14 +177,14 @@ class ImageMerger():
                     self.pose.pose.position.y = 3
                     self.turn_count += 1
                 else:
-                    self.velocity.velocity_level = DRIVING_VELOCITY
+                    velocity = DRIVING_VELOCITY
                     self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
                     self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
                 theta = ROTATION[0]
                 
         elif motion == "RIGHT_MOTION":
             #if is_right_cen:
-            self.velocity.velocity_level = LOW_VELOCITY
+            velocity = LOW_VELOCITY
             #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
@@ -199,29 +200,32 @@ class ImageMerger():
             '''
                 
         elif motion == "FORWARD_MOTION":
-            self.velocity.velocity_level = HIGH_VELOCITY
+            velocity = HIGH_VELOCITY
             #self.lane_map[self.mid_cor[0]][self.mid_cor[1]] =  255
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
                     
         elif motion == "HALT":
-            self.velocity.velocity_level = LOW_VELOCITY
+            velocity = LOW_VELOCITY
             #self.lane_map[min(self.mid_cor[0] + 50, IMG_SIZE - 1)][self.mid_cor[1]] =  255
-            if STOPLINE_PIXEL_VALUE in self.lane_map:
-                stop_line_y = np.where(self.lane_map==STOPLINE_PIXEL_VALUE)[0][0]
+            if STOPLINE_PIXEL_VALUE in self.lane_map[IMG_SIZE/2:,:]:
+                stop_line_y = np.where(self.lane_map[IMG_SIZE/2:,:]==STOPLINE_PIXEL_VALUE)[0][0]
             else:
                 stop_line_y = -50
+            if stop_line_y != -50:
+                if self.count <= STOP_TIME*MISSION_RATE:
+                    self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
+                    velocity = 0
+                else:
+                    self.pose.pose.position.y = 4.5
+                self.count += 1
+                print(self.count)
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
-            if self.count <= STOP_TIME*MISSION_RATE:
-                self.pose.pose.position.y = (IMG_SIZE - min(max(stop_line_y+50, self.mid_cor[0]),IMG_SIZE)) / 100.0 * 3
-            else:
-                self.pose.pose.position.y = 5
-            self.count += 1
             theta = ROTATION[1]
               
         else:
-            self.velocity.velocity_level = LOW_VELOCITY
+            velocity = LOW_VELOCITY
             self.pose.pose.position.x = (self.mid_cor[1] - IMG_SIZE/2) / 100.0 * 3
             self.pose.pose.position.y = (IMG_SIZE - self.mid_cor[0]) / 100.0 * 3
             theta = ROTATION[1]
@@ -239,7 +243,9 @@ class ImageMerger():
         self.pose.pose.orientation.w = qframe[3]
         if not isinstance(motion, type(None)):
             if "SLOW" in motion:
-                self.velocity.velocity_level = LOW_VELOCITY
+                velocity = LOW_VELOCITY
+        return velocity
+        
 
 def lane_callback(img):
     merger.set_lane_map(img)
@@ -294,7 +300,7 @@ if __name__ == "__main__":
             occupancy = OccupancyGrid()
             
 
-            merger.set_goal()
+            merger.velocity.velocity_level = merger.set_goal()
             merger.merge()
             merger.find_lane_cor()
             merged_img = ros_numpy.msgify(Image, merger.merged_map, encoding='mono8')

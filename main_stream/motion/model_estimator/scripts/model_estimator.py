@@ -6,10 +6,12 @@ from core_msgs.msg import ImuSpeed
 from core_msgs.msg import Curvature
 from core_msgs.msg import VelocityLevel
 from core_msgs.msg import Control
+#from core_msgs.msg import MotionState
 from core_msgs.msg import ActiveNode #add
 
 steer = 0
 velocity = 0
+#motion_state = 'FORWARD_MOTION'
 
 def mainloop():
     '''
@@ -17,6 +19,7 @@ def mainloop():
     '''
     global veloicty
     global steer
+  #  global motion_state
     nodename = 'model_estimator'
     mainloop.active = True
     def signalResponse(data) :
@@ -35,6 +38,7 @@ def mainloop():
     rospy.Subscriber("/imu_speed", ImuSpeed, icb)
     rospy.Subscriber("/curvature", Curvature, ccb)
     rospy.Subscriber("/velocity_level", VelocityLevel, vcb)
+ #   rospy.Subscriber("/motion_state", MotionState, mcb)
     pub = rospy.Publisher('/calibrated_control', Control, queue_size = 10)
     rospy.init_node(nodename, anonymous=True)
     rate = rospy.Rate(10) # 10hz
@@ -48,6 +52,8 @@ def mainloop():
         i = i+1
         control.speed = velocity
         control.steer = steer
+        #if motion_state == 'HALT':
+        #    control.speed = 0.
         if mainloop.active:
             pub.publish(control)
         rate.sleep()
@@ -64,6 +70,10 @@ def icb(data) :
 def ccb(data) :
     global steer
     steer = np.arctan(1.7*data.curvature)/np.pi * 180 - 2
+
+#def mcb(data) :
+#    global motion_state
+#    motion_state = data.motion_state
 
 
 
